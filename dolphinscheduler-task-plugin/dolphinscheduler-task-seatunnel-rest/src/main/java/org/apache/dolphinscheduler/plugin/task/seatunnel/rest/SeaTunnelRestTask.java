@@ -26,8 +26,6 @@ import org.apache.dolphinscheduler.plugin.task.api.TaskExecutionContext;
 import org.apache.dolphinscheduler.plugin.task.api.parameters.AbstractParameters;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -36,11 +34,9 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
@@ -79,7 +75,7 @@ public class SeaTunnelRestTask extends AbstractRemoteTask {
         try {
             // Submit job to SeaTunnel server
             this.seaTunnelJobId = submitJob();
-            
+
             if (StringUtils.isEmpty(seaTunnelJobId)) {
                 throw new SeaTunnelRestTaskException("Submit SeaTunnel job failed: jobId is empty");
             }
@@ -109,32 +105,32 @@ public class SeaTunnelRestTask extends AbstractRemoteTask {
     }
 
     /**
-     * Submit SeaTunnel job via REST API
+     * Submit SeaTunnel job via REST API v2
      *
      * @return jobId returned from SeaTunnel server
      * @throws Exception if submission fails
      */
     private String submitJob() throws Exception {
-        String submitUrl = seaTunnelRestParameters.getRestEndpoint() + "/hazelcast/rest/maps/submit-job";
-        
+        String submitUrl = seaTunnelRestParameters.getRestEndpoint() + "/submit-job";
+
         // Build job config JSON
         Map<String, Object> jobConfigMap = buildJobConfig();
         String jobConfigJson = JSONUtils.toJsonString(jobConfigMap);
-        
+
         log.info("Submitting SeaTunnel job to: {}", submitUrl);
         log.info("Job config: {}", jobConfigJson);
 
         try (CloseableHttpClient httpClient = createHttpClient()) {
             HttpPost httpPost = new HttpPost(submitUrl);
             httpPost.setHeader("Content-Type", "application/json");
-            
+
             StringEntity entity = new StringEntity(jobConfigJson, ContentType.APPLICATION_JSON);
             httpPost.setEntity(entity);
 
             try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
                 int statusCode = response.getStatusLine().getStatusCode();
                 String responseBody = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
-                
+
                 log.info("Submit response status: {}, body: {}", statusCode, responseBody);
 
                 if (statusCode != HttpStatus.SC_OK) {
@@ -146,7 +142,7 @@ public class SeaTunnelRestTask extends AbstractRemoteTask {
                 ObjectMapper mapper = new ObjectMapper();
                 JsonNode jsonNode = mapper.readTree(responseBody);
                 String jobId = jsonNode.get("jobId").asText();
-                
+
                 if (StringUtils.isEmpty(jobId)) {
                     throw new SeaTunnelRestTaskException("JobId not found in submit response: " + responseBody);
                 }
@@ -161,53 +157,55 @@ public class SeaTunnelRestTask extends AbstractRemoteTask {
      *
      * @return job config map
      */
+    @SuppressWarnings("unchecked")
     private Map<String, Object> buildJobConfig() {
         Map<String, Object> config = new HashMap<>();
-        
+
         // If jobConfig JSON string is provided, use it directly
         if (StringUtils.isNotEmpty(seaTunnelRestParameters.getJobConfig())) {
-            return JSONUtils.parseObject(seaTunnelRestParameters.getJobConfig(), Map.class);
+            return (Map<String, Object>) JSONUtils.parseObject(seaTunnelRestParameters.getJobConfig(), Map.class);
         }
-        
+
         // Otherwise build from structured parameters
         if (seaTunnelRestParameters.getEnv() != null) {
             config.put("env", seaTunnelRestParameters.getEnv());
         }
-        
+
         if (seaTunnelRestParameters.getSource() != null) {
             config.put("source", seaTunnelRestParameters.getSource());
         }
-        
+
         if (seaTunnelRestParameters.getTransform() != null && !seaTunnelRestParameters.getTransform().isEmpty()) {
             config.put("transform", seaTunnelRestParameters.getTransform());
         }
-        
+
         if (seaTunnelRestParameters.getSink() != null) {
             config.put("sink", seaTunnelRestParameters.getSink());
         }
-        
+
         return config;
     }
 
     /**
      * Poll job status until it finishes (success/failure/cancel)
+     * Using REST API v2
      *
      * @throws Exception if polling fails
      */
     private void pollJobStatus() throws Exception {
-        String jobInfoUrl = seaTunnelRestParameters.getRestEndpoint() + 
-                "/hazelcast/rest/maps/job-info/" + seaTunnelJobId;
-        
+        String jobInfoUrl = seaTunnelRestParameters.getRestEndpoint() +
+                "/job-info/" + seaTunnelJobId;
+
         int pollInterval = seaTunnelRestParameters.getPollInterval();
-        
+
         while (true) {
             try (CloseableHttpClient httpClient = createHttpClient()) {
                 HttpGet httpGet = new HttpGet(jobInfoUrl);
-                
+
                 try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
                     int statusCode = response.getStatusLine().getStatusCode();
                     String responseBody = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
-                    
+
                     if (statusCode != HttpStatus.SC_OK) {
                         log.warn("Query job status failed with status {}: {}", statusCode, responseBody);
                         Thread.sleep(pollInterval);
@@ -217,7 +215,7 @@ public class SeaTunnelRestTask extends AbstractRemoteTask {
                     // Parse job status
                     ObjectMapper mapper = new ObjectMapper();
                     JsonNode jsonNode = mapper.readTree(responseBody);
-                    
+
                     if (jsonNode.has("jobId") && jsonNode.get("jobId").asText().isEmpty()) {
                         log.warn("Job {} not found, may not be started yet", seaTunnelJobId);
                         Thread.sleep(pollInterval);
@@ -240,7 +238,8 @@ public class SeaTunnelRestTask extends AbstractRemoteTask {
                         break;
                     } else if ("FAILED".equalsIgnoreCase(jobStatus)) {
                         setExitStatusCode(TaskConstants.EXIT_CODE_FAILURE);
-                        String errorMsg = jsonNode.has("errorMsg") ? jsonNode.get("errorMsg").asText() : "Unknown error";
+                        String errorMsg =
+                                jsonNode.has("errorMsg") ? jsonNode.get("errorMsg").asText() : "Unknown error";
                         log.error("SeaTunnel job {} failed: {}", seaTunnelJobId, errorMsg);
                         throw new SeaTunnelRestTaskException("SeaTunnel job failed: " + errorMsg);
                     } else if ("CANCELED".equalsIgnoreCase(jobStatus) || "CANCELLED".equalsIgnoreCase(jobStatus)) {
@@ -287,33 +286,33 @@ public class SeaTunnelRestTask extends AbstractRemoteTask {
             return;
         }
 
-        String stopJobUrl = seaTunnelRestParameters.getRestEndpoint() + 
-                "/hazelcast/rest/maps/stop-job";
-        
+        String stopJobUrl = seaTunnelRestParameters.getRestEndpoint() +
+                "/stop-job";
+
         log.info("Trying to cancel SeaTunnel job: {}", seaTunnelJobId);
 
         try (CloseableHttpClient httpClient = createHttpClient()) {
             HttpPost httpPost = new HttpPost(stopJobUrl);
             httpPost.setHeader("Content-Type", "application/json");
-            
+
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("jobId", seaTunnelJobId);
             requestBody.put("isStopWithSavePoint", false);
-            
+
             StringEntity entity = new StringEntity(
-                    JSONUtils.toJsonString(requestBody), 
+                    JSONUtils.toJsonString(requestBody),
                     ContentType.APPLICATION_JSON);
             httpPost.setEntity(entity);
 
             try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
                 int statusCode = response.getStatusLine().getStatusCode();
                 String responseBody = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
-                
+
                 log.info("Cancel job response status: {}, body: {}", statusCode, responseBody);
 
                 if (statusCode == HttpStatus.SC_OK) {
                     log.info("SeaTunnel job {} cancelled successfully", seaTunnelJobId);
-        } else {
+                } else {
                     log.warn("Cancel job may have failed: {}", responseBody);
                 }
             }
@@ -325,8 +324,6 @@ public class SeaTunnelRestTask extends AbstractRemoteTask {
 
     @Override
     public List<String> getApplicationIds() throws TaskException {
-        return seaTunnelJobId != null ? 
-                Collections.singletonList(seaTunnelJobId) : 
-                Collections.emptyList();
+        return seaTunnelJobId != null ? Collections.singletonList(seaTunnelJobId) : Collections.emptyList();
     }
 }

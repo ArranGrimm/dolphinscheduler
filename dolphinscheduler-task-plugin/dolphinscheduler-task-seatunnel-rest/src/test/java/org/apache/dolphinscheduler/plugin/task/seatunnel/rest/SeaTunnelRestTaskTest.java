@@ -15,12 +15,10 @@
  * limitations under the License.
  */
 
-package org.apache.dolphinscheduler.plugin.task.seatunnel;
+package org.apache.dolphinscheduler.plugin.task.seatunnel.rest;
 
 import org.apache.dolphinscheduler.common.utils.JSONUtils;
 import org.apache.dolphinscheduler.plugin.task.api.TaskExecutionContext;
-import org.apache.dolphinscheduler.plugin.task.seatunnel.rest.SeaTunnelRestParameters;
-import org.apache.dolphinscheduler.plugin.task.seatunnel.rest.SeaTunnelRestTask;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -38,7 +36,7 @@ public class SeaTunnelRestTaskTest {
 
         SeaTunnelRestParameters parameters = new SeaTunnelRestParameters();
         parameters.setRestEndpoint("http://localhost:5801");
-        
+
         // Build simple job config
         Map<String, Object> env = new HashMap<>();
         env.put("job.name", "test_job");
@@ -52,14 +50,14 @@ public class SeaTunnelRestTaskTest {
     @Test
     public void testParametersValidation() {
         SeaTunnelRestParameters parameters = new SeaTunnelRestParameters();
-        
+
         // Test without rest endpoint
         Assertions.assertFalse(parameters.checkParameters());
-        
+
         // Test with rest endpoint but no config
         parameters.setRestEndpoint("http://localhost:5801");
         Assertions.assertFalse(parameters.checkParameters());
-        
+
         // Test with json config
         parameters.setJobConfig("{\"env\":{}, \"source\":[], \"sink\":[]}");
         Assertions.assertTrue(parameters.checkParameters());

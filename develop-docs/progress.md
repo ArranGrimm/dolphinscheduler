@@ -35,6 +35,21 @@
    - 超时配置支持
    - 日志输出与错误处理
 
+5. ✅ 完善测试体系 (2025-10-11 更新)
+   - `SeaTunnelRestTaskTest.java` - 基础参数验证测试
+   - `SeaTunnelRestTaskMockTest.java` - Mock HTTP 测试
+     * FakeSource 场景测试
+     * **JDBC Oracle 真实场景测试**（使用脱敏数据）
+     * 超时配置测试
+     * 序列化/反序列化测试
+   - `SeaTunnelRestTaskIntegrationTest.java` - 集成测试（通过环境变量配置）
+     * FakeSource 到 Console
+     * JDBC Oracle 到 Console（真实数据库）
+   - 安全性保护
+     * `test.env.example` - 配置模板
+     * `.gitignore` 排除 `test.env`
+     * `INTEGRATION_TEST.md` - 详细使用指南
+
 ## 技术实现细节
 
 ### 依赖配置
@@ -45,10 +60,12 @@
 - commons-collections4 (工具类)
 ```
 
-### API 端点设计
-- 提交任务：`POST /hazelcast/rest/maps/submit-job`
-- 查询状态：`GET /hazelcast/rest/maps/job-info/{jobId}`
-- 取消任务：`POST /hazelcast/rest/maps/stop-job`
+### API 端点设计 (REST API v2)
+- 提交任务：`POST /submit-job`
+- 查询状态：`GET /job-info/{jobId}`
+- 取消任务：`POST /stop-job`
+
+**注意**: 已从 v1 接口路径 `/hazelcast/rest/maps/*` 迁移到 v2 标准路径
 
 ### 参数模型设计
 ```java
@@ -88,13 +105,22 @@
 
 ### 🔄 阶段二：集成测试与优化 (进行中)
 
-**计划内容**:
-1. ⏳ 在 `dolphinscheduler-task-plugin/pom.xml` 中注册新模块
-2. ⏳ 更新 `dolphinscheduler-task-all/pom.xml` 添加依赖
-3. ⏳ 编写完整的单元测试
-4. ⏳ 部署到 DolphinScheduler 测试环境
-5. ⏳ 进行端到端集成测试
-6. ⏳ 性能优化与错误处理增强
+**完成时间**: 2025-10-11
+
+**完成内容**:
+1. ✅ 在 `dolphinscheduler-task-plugin/pom.xml` 中注册新模块
+2. ✅ 更新 `dolphinscheduler-task-all/pom.xml` 添加依赖
+3. ✅ 解决编译依赖问题（Maven 依赖安装）
+4. ✅ 编写完整的测试体系
+   - 单元测试（参数验证）
+   - Mock 测试（HTTP 交互）
+   - 集成测试（真实服务连接）
+5. ✅ 清理冗余脚本和文档
+   - 删除多余的 `.cmd` 脚本文件
+   - 整合测试文档为统一的 `testing-guide.md`
+6. ⏳ 部署到 DolphinScheduler Worker 测试环境
+7. ⏳ 进行端到端集成测试（连接真实 SeaTunnel Server）
+8. ⏳ 性能优化与错误处理增强
 
 ### 📋 阶段三：前端界面开发 (待启动)
 
@@ -137,6 +163,13 @@
 - 轮询方式实现简单，可靠性高
 - 符合 DolphinScheduler 其他远程任务插件的实现惯例
 
+### 决策 4：使用 SeaTunnel REST API v2
+**时间**: 2025-10-10  
+**修正原因**:
+- v1 接口 (`/hazelcast/rest/maps/*`) 已淘汰
+- v2 接口更简洁：直接使用 `/submit-job`、`/job-info/:jobId`、`/stop-job`
+- 符合 SeaTunnel 官方文档推荐的最新实践
+
 ## 文件清单
 
 ### 源代码文件
@@ -168,23 +201,36 @@ dolphinscheduler/develop-docs/
 │   └── seat.plan.md
 ├── seatunnel-docs/
 │   └── rest-api-v2.md (SeaTunnel REST API 文档)
-└── progress.md (本文档)
+├── progress.md (本文档)
+├── testing-guide.md (测试指南)
+└── changelog-2025-10-10.md (变更日志)
+```
+
+### 测试文件
+```
+dolphinscheduler-task-plugin/dolphinscheduler-task-seatunnel-rest/
+├── test.env.example (集成测试环境变量模板)
+└── src/test/java/org/apache/dolphinscheduler/plugin/task/seatunnel/rest/
+    ├── SeaTunnelRestTaskTest.java (单元测试)
+    ├── SeaTunnelRestTaskMockTest.java (Mock 测试)
+    └── SeaTunnelRestTaskIntegrationTest.java (集成测试)
 ```
 
 ## 下一步行动
 
 1. **立即执行**：
-   - 在父 POM 中注册 `dolphinscheduler-task-seatunnel-rest` 模块
-   - 编译验证，修复可能的 lint 错误
+   - 运行 Mock 测试验证插件功能
+   - 熟悉 Maven 测试命令（参考 `testing-guide.md`）
 
 2. **本周计划**：
-   - 部署到测试环境
-   - 编写集成测试用例
-   - 验证与 SeaTunnel Server 的交互
+   - 完整编译打包插件模块
+   - 部署到 DolphinScheduler Worker 测试环境
+   - 运行集成测试（连接真实 SeaTunnel Server）
 
 3. **后续计划**：
    - 启动前端组件开发
    - 实现可视化配置界面
+   - 编写用户使用文档
 
 ## 备注
 

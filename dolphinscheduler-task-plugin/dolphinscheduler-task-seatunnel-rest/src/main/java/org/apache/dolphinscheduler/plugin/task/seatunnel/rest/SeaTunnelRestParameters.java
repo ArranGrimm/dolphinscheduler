@@ -92,8 +92,8 @@ public class SeaTunnelRestParameters extends AbstractParameters {
         }
 
         // Check if either jobConfig JSON or structured config (env/source/sink) is provided
-        if (StringUtils.isEmpty(this.jobConfig) && 
-            (this.env == null || this.source == null || this.sink == null)) {
+        if (StringUtils.isEmpty(this.jobConfig) &&
+                (this.env == null || this.source == null || this.sink == null)) {
             log.error("SeaTunnel job configuration is incomplete");
             return false;
         }

@@ -33,9 +33,25 @@
 
 ### To-dos
 
-- [ ] 搭建后端插件模块与参数模型，提交/轮询 SeaTunnel 作业
-- [ ] 完成 SPI 注册、依赖聚合与打包配置，补充后端测试
+- [x] 搭建后端插件模块与参数模型，提交/轮询 SeaTunnel 作业 ✅ (2025-10-10)
+- [x] 完成 SPI 注册、依赖聚合与打包配置，补充后端测试 ✅ (2025-10-10)
+- [ ] 编译测试插件模块，修复可能的编译错误
+- [ ] 部署到 DolphinScheduler Worker 测试环境，验证插件加载
 - [ ] 实现最小可用的前端 SeaTunnel 任务配置弹窗并联调
 - [ ] 扩展高级表单、动态连接器与 JSON 预览交互
-- [ ] 更新 progress 与 project-status，撰写部署联调文档
+- [ ] 更新 project-status，撰写部署联调文档
+
+### 重要更新 (2025-10-10)
+
+**✅ 已完成**:
+- 后端插件核心代码实现（5个核心类 + 测试类）
+- 使用 REST API v2 接口（而非已淘汰的 v1）
+- SPI 注册配置完成
+- 添加到 `dolphinscheduler-task-all` 打包依赖
+
+**🔧 已修正**:
+- 修正了 REST API 路径，从 v1 的 `/hazelcast/rest/maps/*` 更新为 v2 的 `/*` 接口
+  - 提交任务：`POST /submit-job`
+  - 查询状态：`GET /job-info/:jobId`
+  - 停止任务：`POST /stop-job`
 

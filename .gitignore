@@ -52,3 +52,8 @@ dolphinscheduler-common/test
 dolphinscheduler-worker/logs
 dolphinscheduler-master/logs
 dolphinscheduler-api/logs
+
+# Test environment files (may contain sensitive credentials)
+test.env
+*.env.local
+.env.local
