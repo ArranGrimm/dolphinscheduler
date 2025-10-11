@@ -64,42 +64,51 @@ mvn test -Dtest=SeaTunnelRestTaskMockTest
 
 连接真实的 SeaTunnel 服务器和数据库进行端到端测试。
 
-#### 4.1 配置环境变量
+#### 4.1 启用集成测试
 
-创建 `test.env` 文件（基于 `test.env.example`）：
+集成测试默认被 `@Disabled` 注解禁用。要运行集成测试：
+
+1. 打开 `SeaTunnelRestTaskIntegrationTest.java`
+2. 删除或注释掉类上的 `@Disabled` 注解
+
+#### 4.2 设置环境变量并运行测试
+
+切换到插件目录并设置环境变量：
+
+```cmd
+cd dolphinscheduler\dolphinscheduler-task-plugin\dolphinscheduler-task-seatunnel-rest
+
+REM 设置环境变量（根据实际情况修改）
+set SEATUNNEL_REST_ENDPOINT=http://localhost:8080
+set ORACLE_JDBC_URL=jdbc:oracle:thin:@//localhost:1521/ORCLCDB
+set ORACLE_USER=your_username
+set ORACLE_PASSWORD=your_password
+set ORACLE_QUERY=SELECT * FROM your_table WHERE ROWNUM <= 10
+
+REM 运行集成测试
+mvn test -Dtest=SeaTunnelRestTaskIntegrationTest
+```
+
+**Linux/Mac 用户**：
 
 ```bash
 cd dolphinscheduler/dolphinscheduler-task-plugin/dolphinscheduler-task-seatunnel-rest
-cp test.env.example test.env
+
+# 设置环境变量
+export SEATUNNEL_REST_ENDPOINT=http://localhost:8080
+export ORACLE_JDBC_URL=jdbc:oracle:thin:@//localhost:1521/ORCLCDB
+export ORACLE_USER=your_username
+export ORACLE_PASSWORD=your_password
+export ORACLE_QUERY="SELECT * FROM your_table WHERE ROWNUM <= 10"
+
+# 运行集成测试
+mvn test -Dtest=SeaTunnelRestTaskIntegrationTest
 ```
 
-编辑 `test.env`，填入真实配置：
-
-```properties
-# SeaTunnel REST API
-SEATUNNEL_REST_ENDPOINT=http://localhost:8080
-
-# 数据库连接（用于真实测试）
-ORACLE_URL=jdbc:oracle:thin:@//localhost:1521/ORCLCDB
-ORACLE_USER=your_username
-ORACLE_PASSWORD=your_password
-ORACLE_QUERY=SELECT * FROM your_table WHERE ROWNUM <= 10
-```
-
-**⚠️ 注意**: `test.env` 已在 `.gitignore` 中，不会被提交到 Git。
-
-#### 4.2 运行集成测试
-
-```bash
-cd dolphinscheduler/dolphinscheduler-task-plugin/dolphinscheduler-task-seatunnel-rest
-
-# 加载环境变量并运行集成测试
-# Windows (PowerShell)
-Get-Content test.env | ForEach-Object { if ($_ -match '^([^#].+?)=(.+)$') { [Environment]::SetEnvironmentVariable($matches[1], $matches[2], 'Process') } }; mvn test -Dtest=SeaTunnelRestTaskIntegrationTest
-
-# Linux/Mac
-export $(cat test.env | grep -v '^#' | xargs) && mvn test -Dtest=SeaTunnelRestTaskIntegrationTest
-```
+**⚠️ 注意**：
+- 环境变量仅在当前终端会话中有效
+- 关闭终端后需要重新设置
+- 建议将 `set` 命令保存到单独的文档中方便复用
 
 **集成测试场景**：
 - 提交 FakeSource 任务
@@ -171,7 +180,6 @@ mvn test -X -Dtest=SeaTunnelRestTaskMockTest
 | `SeaTunnelRestTaskTest.java` | 单元测试：参数验证 |
 | `SeaTunnelRestTaskMockTest.java` | Mock 测试：HTTP 交互模拟 |
 | `SeaTunnelRestTaskIntegrationTest.java` | 集成测试：连接真实服务 |
-| `test.env.example` | 环境变量配置模板 |
 
 ## 🎯 推荐测试流程
 

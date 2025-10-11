@@ -28,7 +28,6 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -50,7 +49,7 @@ import org.junit.jupiter.api.Test;
  * - NEVER hardcode credentials in this file
  * - Always use environment variables for sensitive information
  */
-@Disabled("Integration tests require real SeaTunnel server and credentials from environment variables")
+// @Disabled("Integration tests require real SeaTunnel server and credentials from environment variables")
 public class SeaTunnelRestTaskIntegrationTest {
 
     private TaskExecutionContext taskExecutionContext;

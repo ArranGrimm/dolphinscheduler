@@ -57,3 +57,4 @@ dolphinscheduler-api/logs
 test.env
 *.env.local
 .env.local
+*.cmd

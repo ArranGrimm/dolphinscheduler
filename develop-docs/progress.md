@@ -46,9 +46,9 @@
      * FakeSource 到 Console
      * JDBC Oracle 到 Console（真实数据库）
    - 安全性保护
-     * `test.env.example` - 配置模板
-     * `.gitignore` 排除 `test.env`
-     * `INTEGRATION_TEST.md` - 详细使用指南
+     * 默认禁用（`@Disabled` 注解）
+     * 敏感数据通过命令行环境变量设置
+     * 不保存任何配置文件到代码库
 
 ## 技术实现细节
 
@@ -209,11 +209,10 @@ dolphinscheduler/develop-docs/
 ### 测试文件
 ```
 dolphinscheduler-task-plugin/dolphinscheduler-task-seatunnel-rest/
-├── test.env.example (集成测试环境变量模板)
 └── src/test/java/org/apache/dolphinscheduler/plugin/task/seatunnel/rest/
-    ├── SeaTunnelRestTaskTest.java (单元测试)
-    ├── SeaTunnelRestTaskMockTest.java (Mock 测试)
-    └── SeaTunnelRestTaskIntegrationTest.java (集成测试)
+    ├── SeaTunnelRestTaskTest.java (单元测试：参数验证)
+    ├── SeaTunnelRestTaskMockTest.java (Mock 测试：HTTP 交互模拟)
+    └── SeaTunnelRestTaskIntegrationTest.java (集成测试：需要设置环境变量)
 ```
 
 ## 下一步行动
