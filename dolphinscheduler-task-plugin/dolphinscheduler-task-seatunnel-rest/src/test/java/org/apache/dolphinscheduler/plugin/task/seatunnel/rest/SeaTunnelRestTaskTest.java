@@ -20,7 +20,9 @@ package org.apache.dolphinscheduler.plugin.task.seatunnel.rest;
 import org.apache.dolphinscheduler.common.utils.JSONUtils;
 import org.apache.dolphinscheduler.plugin.task.api.TaskExecutionContext;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Assertions;
@@ -37,10 +39,8 @@ public class SeaTunnelRestTaskTest {
         SeaTunnelRestParameters parameters = new SeaTunnelRestParameters();
         parameters.setRestEndpoint("http://localhost:5801");
 
-        // Build simple job config
-        Map<String, Object> env = new HashMap<>();
-        env.put("job.name", "test_job");
-        parameters.setEnv(env);
+        // Test with jobConfig JSON (valid)
+        parameters.setJobConfig("{\"env\":{\"job.name\":\"test_job\"}, \"source\":[], \"sink\":[]}");
 
         taskExecutionContext.setTaskParams(JSONUtils.toJsonString(parameters));
 
@@ -60,6 +60,34 @@ public class SeaTunnelRestTaskTest {
 
         // Test with json config
         parameters.setJobConfig("{\"env\":{}, \"source\":[], \"sink\":[]}");
+        Assertions.assertTrue(parameters.checkParameters());
+    }
+
+    @Test
+    public void testStructuredConfig() {
+        SeaTunnelRestParameters parameters = new SeaTunnelRestParameters();
+        parameters.setRestEndpoint("http://localhost:5801");
+
+        // Set up structured config (env, source, sink)
+        Map<String, Object> env = new HashMap<>();
+        env.put("job.name", "test_job");
+        parameters.setEnv(env);
+
+        List<Map<String, Object>> source = new ArrayList<>();
+        Map<String, Object> fakeSource = new HashMap<>();
+        fakeSource.put("plugin_name", "FakeSource");
+        fakeSource.put("result_table_name", "fake");
+        source.add(fakeSource);
+        parameters.setSource(source);
+
+        List<Map<String, Object>> sink = new ArrayList<>();
+        Map<String, Object> consoleSink = new HashMap<>();
+        consoleSink.put("plugin_name", "Console");
+        consoleSink.put("source_table_name", "fake");
+        sink.add(consoleSink);
+        parameters.setSink(sink);
+
+        // Validation should pass with complete structured config
         Assertions.assertTrue(parameters.checkParameters());
     }
 }
