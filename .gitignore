@@ -58,4 +58,5 @@ test.env
 *.env.local
 .env.local
 *.cmd
-.log
+*.log
+logs/
