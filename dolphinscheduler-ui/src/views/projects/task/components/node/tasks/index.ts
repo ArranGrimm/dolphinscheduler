@@ -28,6 +28,7 @@ import { useSql } from './use-sql'
 import { useProcedure } from './use-procedure'
 import { useSqoop } from './use-sqoop'
 import { useSeaTunnel } from './use-sea-tunnel'
+import { useSeaTunnelRest } from './use-seatunnel-rest'
 import { useSwitch } from './use-switch'
 import { useConditions } from './use-conditions'
 import { useDataX } from './use-datax'
@@ -68,6 +69,7 @@ export default {
   PROCEDURE: useProcedure,
   SQOOP: useSqoop,
   SEATUNNEL: useSeaTunnel,
+  SEATUNNEL_REST: useSeaTunnelRest,
   SWITCH: useSwitch,
   CONDITIONS: useConditions,
   DATAX: useDataX,

@@ -344,6 +344,8 @@ interface ITaskParams {
   zeppelinParagraphId?: string
   zeppelinRestEndpoint?: string
   restEndpoint?: string
+  jobConfig?: string
+  pollInterval?: number
   zeppelinUsername?: string
   username?: string
   zeppelinPassword?: string

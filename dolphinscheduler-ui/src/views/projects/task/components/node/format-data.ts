@@ -344,6 +344,14 @@ export function formatParams(data: INodeData): {
     taskParams.type = data.type
   }
 
+  if (data.taskType === 'SEATUNNEL_REST') {
+    taskParams.restEndpoint = data.restEndpoint
+    taskParams.jobConfig = data.jobConfig
+    taskParams.connectTimeout = data.connectTimeout
+    taskParams.socketTimeout = data.socketTimeout
+    taskParams.pollInterval = data.pollInterval
+  }
+
   if (data.taskType === 'K8S') {
     taskParams.namespace = data.namespace
     taskParams.minCpuCores = data.minCpuCores

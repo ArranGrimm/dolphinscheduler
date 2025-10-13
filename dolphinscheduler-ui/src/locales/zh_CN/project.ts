@@ -247,7 +247,7 @@ export default {
       '下游存在依赖，你不能删除该任务.',
     warning_delete_scheduler_dependent_tasks_desc:
       '下游存在依赖, 删除定时可能会对下游任务产生影响. 你确定要删除该定时嘛?',
-    warning_too_large_parallelism_number: '并行度设置太大了, 最好不要超过10.',
+    warning_too_large_parallelism_number: '并行度设置太大了, 最好不要超过10.'
   },
   task: {
     on_line: '线上',
@@ -730,6 +730,11 @@ export default {
     zeppelin_username_tips: '请输入zeppelin server的登陆用户名',
     zeppelin_password: 'zeppelinPassword',
     zeppelin_password_tips: '请输入zeppelin server的登陆密码',
+    seatunnel_rest_endpoint: 'SeaTunnel REST 端点',
+    seatunnel_rest_endpoint_tips: '请输入 SeaTunnel REST API 地址（必填）',
+    seatunnel_job_config: 'Job 配置（JSON）',
+    seatunnel_job_config_tips: '请输入 SeaTunnel 作业配置（JSON 格式）',
+    poll_interval: '轮询间隔',
     sql_execution_type: 'SQL来源',
     sql_execution_type_from_file: '选择资源中心文件',
     sql_execution_type_from_script: '脚本输入',

@@ -250,7 +250,8 @@ export default {
       'The downstream dependent tasks exists. You can not delete the task.',
     warning_delete_scheduler_dependent_tasks_desc:
       'The downstream dependent tasks exists. Are you sure to delete the scheduler?',
-    warning_too_large_parallelism_number: 'The parallelism number is too large. It is better not to be over 10.'
+    warning_too_large_parallelism_number:
+      'The parallelism number is too large. It is better not to be over 10.'
   },
   task: {
     on_line: 'Online',
@@ -748,6 +749,13 @@ export default {
     zeppelin_username_tips: 'Please enter the zeppelin server username',
     zeppelin_password: 'zeppelinPassword',
     zeppelin_password_tips: 'Please enter the zeppelin server password',
+    seatunnel_rest_endpoint: 'SeaTunnel REST Endpoint',
+    seatunnel_rest_endpoint_tips:
+      'Please enter the SeaTunnel REST API endpoint (required)',
+    seatunnel_job_config: 'Job Configuration (JSON)',
+    seatunnel_job_config_tips:
+      'Please enter the SeaTunnel job configuration in JSON format',
+    poll_interval: 'Poll Interval',
     sql_execution_type: 'SQL Input',
     sql_execution_type_from_file: 'FROM_FILE',
     sql_execution_type_from_script: 'FROM_SCRIPT',

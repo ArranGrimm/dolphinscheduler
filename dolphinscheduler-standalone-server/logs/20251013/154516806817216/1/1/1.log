@@ -1,0 +1,161 @@
+[INFO] 2025-10-13 11:22:10.792 +0800 - 
+***********************************************************************************************
+[INFO] 2025-10-13 11:22:10.798 +0800 - *********************************  Initialize task context  ***********************************
+[INFO] 2025-10-13 11:22:10.799 +0800 - ***********************************************************************************************
+[INFO] 2025-10-13 11:22:10.800 +0800 - Begin to initialize task
+[INFO] 2025-10-13 11:22:10.800 +0800 - Set task startTime: 1760325730800
+[INFO] 2025-10-13 11:22:10.800 +0800 - Set task appId: 1_1
+[INFO] 2025-10-13 11:22:10.802 +0800 - End initialize task {
+  "taskInstanceId" : 1,
+  "taskName" : "test-seatunnel-rest",
+  "firstSubmitTime" : 1760325730589,
+  "startTime" : 1760325730800,
+  "taskType" : "SEATUNNEL_REST",
+  "workflowInstanceHost" : "10.1.35.13:5678",
+  "host" : "10.1.35.13:1234",
+  "logPath" : "D:\\WorkSpace\\personal_proj\\SeaFlow\\dolphinscheduler\\dolphinscheduler-standalone-server\\logs\\20251013\\154516806817216\\1\\1\\1.log",
+  "processId" : 0,
+  "processDefineCode" : 154516806817216,
+  "processDefineVersion" : 1,
+  "processInstanceId" : 1,
+  "scheduleTime" : 0,
+  "executorId" : 1,
+  "cmdTypeIfComplement" : 0,
+  "tenantCode" : "default",
+  "processDefineId" : 0,
+  "projectId" : 0,
+  "projectCode" : 154515542691264,
+  "taskParams" : "{\"localParams\":[],\"resourceList\":[],\"restEndpoint\":\"http://localhost:8080\",\"jobConfig\":\"{\\r\\n  \\\"env\\\": {\\r\\n    \\\"execution.parallelism\\\": 1\\r\\n  },\\r\\n  \\\"source\\\": [\\r\\n    {\\r\\n      \\\"plugin_name\\\": \\\"FakeSource\\\",\\r\\n      \\\"result_table_name\\\": \\\"fake_table\\\",\\r\\n      \\\"row.num\\\": 10,\\r\\n      \\\"schema\\\": {\\r\\n        \\\"fields\\\": {\\r\\n          \\\"id\\\": \\\"int\\\",\\r\\n          \\\"name\\\": \\\"string\\\",\\r\\n          \\\"age\\\": \\\"int\\\"\\r\\n        }\\r\\n      }\\r\\n    }\\r\\n  ],\\r\\n  \\\"transform\\\": [],\\r\\n  \\\"sink\\\": [\\r\\n    {\\r\\n      \\\"plugin_name\\\": \\\"Console\\\",\\r\\n      \\\"source_table_name\\\": \\\"fake_table\\\"\\r\\n    }\\r\\n  ]\\r\\n}\",\"connectTimeout\":60000,\"socketTimeout\":60000,\"pollInterval\":10000}",
+  "prepareParamsMap" : {
+    "system.task.definition.name" : {
+      "prop" : "system.task.definition.name",
+      "direct" : "IN",
+      "type" : "VARCHAR",
+      "value" : "test-seatunnel-rest"
+    },
+    "system.project.name" : {
+      "prop" : "system.project.name",
+      "direct" : "IN",
+      "type" : "VARCHAR",
+      "value" : null
+    },
+    "system.project.code" : {
+      "prop" : "system.project.code",
+      "direct" : "IN",
+      "type" : "VARCHAR",
+      "value" : "154515542691264"
+    },
+    "system.workflow.instance.id" : {
+      "prop" : "system.workflow.instance.id",
+      "direct" : "IN",
+      "type" : "VARCHAR",
+      "value" : "1"
+    },
+    "system.biz.curdate" : {
+      "prop" : "system.biz.curdate",
+      "direct" : "IN",
+      "type" : "VARCHAR",
+      "value" : "20251013"
+    },
+    "system.biz.date" : {
+      "prop" : "system.biz.date",
+      "direct" : "IN",
+      "type" : "VARCHAR",
+      "value" : "20251012"
+    },
+    "system.task.instance.id" : {
+      "prop" : "system.task.instance.id",
+      "direct" : "IN",
+      "type" : "VARCHAR",
+      "value" : "1"
+    },
+    "system.workflow.definition.name" : {
+      "prop" : "system.workflow.definition.name",
+      "direct" : "IN",
+      "type" : "VARCHAR",
+      "value" : "test-seatunnel-group"
+    },
+    "system.task.definition.code" : {
+      "prop" : "system.task.definition.code",
+      "direct" : "IN",
+      "type" : "VARCHAR",
+      "value" : "154516749887936"
+    },
+    "system.workflow.definition.code" : {
+      "prop" : "system.workflow.definition.code",
+      "direct" : "IN",
+      "type" : "VARCHAR",
+      "value" : "154516806817216"
+    },
+    "system.datetime" : {
+      "prop" : "system.datetime",
+      "direct" : "IN",
+      "type" : "VARCHAR",
+      "value" : "20251013112210"
+    }
+  },
+  "taskAppId" : "1_1",
+  "taskTimeout" : 2147483647,
+  "workerGroup" : "default",
+  "delayTime" : 0,
+  "currentExecutionStatus" : "SUBMITTED_SUCCESS",
+  "endTime" : 0,
+  "dryRun" : 0,
+  "paramsMap" : { },
+  "cpuQuota" : -1,
+  "memoryMax" : -1,
+  "testFlag" : 0,
+  "logBufferEnable" : false,
+  "dispatchFailTimes" : 0
+}
+[INFO] 2025-10-13 11:22:10.804 +0800 - 
+***********************************************************************************************
+[INFO] 2025-10-13 11:22:10.804 +0800 - *********************************  Load task instance plugin  *********************************
+[INFO] 2025-10-13 11:22:10.805 +0800 - ***********************************************************************************************
+[INFO] 2025-10-13 11:22:10.822 +0800 - Send task status RUNNING_EXECUTION master: 10.1.35.13:1234
+[INFO] 2025-10-13 11:22:10.825 +0800 - Current tenant is default tenant, will use bootstrap user: 44314 to execute the task
+[INFO] 2025-10-13 11:22:10.825 +0800 - TenantCode: 44314 check successfully
+[INFO] 2025-10-13 11:22:10.833 +0800 - WorkflowInstanceExecDir: /tmp/dolphinscheduler/exec/process/44314/154515542691264/154516806817216_1/1/1 check successfully
+[INFO] 2025-10-13 11:22:10.833 +0800 - Create TaskChannel: org.apache.dolphinscheduler.plugin.task.seatunnel.rest.SeaTunnelRestTaskChannel successfully
+[INFO] 2025-10-13 11:22:10.833 +0800 - Download resources successfully: 
+ResourceContext(resourceItemMap={})
+[INFO] 2025-10-13 11:22:10.835 +0800 - Download upstream files: [] successfully
+[INFO] 2025-10-13 11:22:10.838 +0800 - Task plugin instance: SEATUNNEL_REST create successfully
+[INFO] 2025-10-13 11:22:10.839 +0800 - Initialize SeaTunnel REST task params: {
+  "localParams" : [ ],
+  "varPool" : [ ],
+  "restEndpoint" : "http://localhost:8080",
+  "jobConfig" : "{\r\n  \"env\": {\r\n    \"execution.parallelism\": 1\r\n  },\r\n  \"source\": [\r\n    {\r\n      \"plugin_name\": \"FakeSource\",\r\n      \"result_table_name\": \"fake_table\",\r\n      \"row.num\": 10,\r\n      \"schema\": {\r\n        \"fields\": {\r\n          \"id\": \"int\",\r\n          \"name\": \"string\",\r\n          \"age\": \"int\"\r\n        }\r\n      }\r\n    }\r\n  ],\r\n  \"transform\": [],\r\n  \"sink\": [\r\n    {\r\n      \"plugin_name\": \"Console\",\r\n      \"source_table_name\": \"fake_table\"\r\n    }\r\n  ]\r\n}",
+  "env" : null,
+  "source" : null,
+  "transform" : null,
+  "sink" : null,
+  "connectTimeout" : 60000,
+  "socketTimeout" : 60000,
+  "pollInterval" : 10000
+}
+[INFO] 2025-10-13 11:22:10.839 +0800 - Success initialized task plugin instance successfully
+[INFO] 2025-10-13 11:22:10.840 +0800 - Set taskVarPool: null successfully
+[INFO] 2025-10-13 11:22:10.842 +0800 - 
+***********************************************************************************************
+[INFO] 2025-10-13 11:22:10.843 +0800 - *********************************  Execute task instance  *************************************
+[INFO] 2025-10-13 11:22:10.843 +0800 - ***********************************************************************************************
+[INFO] 2025-10-13 11:22:10.844 +0800 - Submitting SeaTunnel job to: http://localhost:8080/submit-job
+[INFO] 2025-10-13 11:22:10.845 +0800 - Job config: {"env":{"execution.parallelism":1},"source":[{"plugin_name":"FakeSource","result_table_name":"fake_table","row.num":10,"schema":{"fields":{"id":"int","name":"string","age":"int"}}}],"transform":[],"sink":[{"plugin_name":"Console","source_table_name":"fake_table"}]}
+[INFO] 2025-10-13 11:22:11.580 +0800 - Submit response status: 200, body: {"jobId":"1029957196034605057","jobName":"SeaTunnel_Job"}
+[INFO] 2025-10-13 11:22:11.582 +0800 - SeaTunnel job submitted successfully, jobId: 1029957196034605057
+[INFO] 2025-10-13 11:22:11.639 +0800 - SeaTunnel job 1029957196034605057 status: PENDING
+[INFO] 2025-10-13 11:22:11.639 +0800 - Job metrics: {"TableSourceReceivedCount":{},"TableSourceReceivedQPS":{},"TableSinkWriteQPS":{},"TableSinkWriteCount":{},"SinkWriteCount":"0","SinkWriteBytesPerSeconds":"0.0","TableSinkWriteBytesPerSeconds":{},"SinkWriteQPS":"0.0","SourceReceivedBytes":"0","SourceReceivedBytesPerSeconds":"0.0","SourceReceivedCount":"0","SourceReceivedQPS":"0.0","TableSourceReceivedBytesPerSeconds":{},"TableSourceReceivedBytes":{},"SinkWriteBytes":"0","TableSinkWriteBytes":{}}
+[INFO] 2025-10-13 11:22:21.725 +0800 - SeaTunnel job 1029957196034605057 status: FINISHED
+[INFO] 2025-10-13 11:22:21.725 +0800 - Job metrics: {"TableSourceReceivedCount":{"fake_table":"10"},"TableSourceReceivedQPS":{"fake_table":"7.955449482895784"},"TableSinkWriteQPS":{"fake_table":"7.861635220125786"},"TableSinkWriteCount":{"fake_table":"10"},"SinkWriteCount":"10","SinkWriteBytesPerSeconds":"102.04081632653062","TableSinkWriteBytesPerSeconds":{"fake_table":"102.1209740769835"},"SinkWriteQPS":"7.855459544383346","SourceReceivedBytes":"130","SourceReceivedBytesPerSeconds":"103.42084327764519","SourceReceivedCount":"10","SourceReceivedQPS":"7.94912559618442","TableSourceReceivedBytesPerSeconds":{"fake_table":"103.33863275039745"},"TableSourceReceivedBytes":{"fake_table":"130"},"SinkWriteBytes":"130","TableSinkWriteBytes":{"fake_table":"130"}}
+[INFO] 2025-10-13 11:22:21.725 +0800 - SeaTunnel job 1029957196034605057 finished successfully
+[INFO] 2025-10-13 11:22:21.726 +0800 - 
+***********************************************************************************************
+[INFO] 2025-10-13 11:22:21.726 +0800 - *********************************  Finalize task instance  ************************************
+[INFO] 2025-10-13 11:22:21.726 +0800 - ***********************************************************************************************
+[INFO] 2025-10-13 11:22:21.726 +0800 - Upload output files: [] successfully
+[INFO] 2025-10-13 11:22:21.732 +0800 - Send task execute status: SUCCESS to master : 10.1.35.13:1234
+[INFO] 2025-10-13 11:22:21.732 +0800 - Remove the current task execute context from worker cache
+[INFO] 2025-10-13 11:22:21.732 +0800 - The current execute mode isn't develop mode, will clear the task execute file: /tmp/dolphinscheduler/exec/process/44314/154515542691264/154516806817216_1/1/1
+[INFO] 2025-10-13 11:22:21.741 +0800 - Success clear the task execute file: /tmp/dolphinscheduler/exec/process/44314/154515542691264/154516806817216_1/1/1
+[INFO] 2025-10-13 11:22:21.742 +0800 - FINALIZE_SESSION
