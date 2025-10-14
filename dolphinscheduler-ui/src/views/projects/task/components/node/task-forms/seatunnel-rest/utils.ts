@@ -15,7 +15,10 @@
  * limitations under the License.
  */
 
-import type { ParsedJdbcUrl, SeaTunnelConfigModel } from './types'
+import type {
+  ParsedJdbcUrl,
+  SeaTunnelConfigModel
+} from './types'
 
 /**
  * 解析 JDBC URL
@@ -153,32 +156,36 @@ export function generateSeaTunnelConfig(
         plugin_input: s.plugin_input
       }
 
-      // JDBC Sink
+      if (s.url) sink.url = s.url
+      if (s.driver) sink.driver = s.driver
+      if (s.plugin_name === 'Jdbc' && s.user) {
+        sink.user = maskSensitive ? '***' : s.user
+      }
+      if (s.plugin_name === 'Doris' && (s as any).username) {
+        sink.username = maskSensitive ? '***' : (s as any).username
+      }
+      if (s.password) {
+        sink.password = maskSensitive ? '***' : s.password
+      }
+      if (s.database) sink.database = s.database
+      if (s.table) sink.table = s.table
+
       if (s.plugin_name === 'Jdbc') {
-        if (s.database) sink.database = s.database
-        if (s.table) sink.table = s.table
-        if (s.primary_keys) sink.primary_keys = s.primary_keys
-        if (s.generate_sink_sql) sink.generate_sink_sql = s.generate_sink_sql
+        if ((s as any).primary_keys) sink.primary_keys = (s as any).primary_keys
+        if ((s as any).generate_sink_sql !== undefined) {
+          sink.generate_sink_sql = (s as any).generate_sink_sql
+        }
       }
 
-      // Doris Sink
       if (s.plugin_name === 'Doris') {
         const dorisSink = s as any
         if (dorisSink.fenodes) sink.fenodes = dorisSink.fenodes
-        if (dorisSink.database) sink.database = dorisSink.database
-        if (dorisSink.table) sink.table = dorisSink.table
-        if (dorisSink.username) {
-          sink.username = maskSensitive ? '***' : dorisSink.username
-        }
-        if (dorisSink.password) {
-          sink.password = maskSensitive ? '***' : dorisSink.password
-        }
       }
 
-      // 高级选项
       if (s.batch_size) sink.batch_size = s.batch_size
-      if (s.is_exactly_once !== undefined)
-        sink.is_exactly_once = s.is_exactly_once
+      if (s.batch_interval_ms) sink.batch_interval_ms = s.batch_interval_ms
+      if (s.is_exactly_once !== undefined) sink.is_exactly_once = s.is_exactly_once
+      if (s.enable_upsert !== undefined) sink.enable_upsert = s.enable_upsert
       if (s.schema_save_mode) sink.schema_save_mode = s.schema_save_mode
       if (s.data_save_mode) sink.data_save_mode = s.data_save_mode
 
@@ -245,20 +252,37 @@ export function validateConfig(model: SeaTunnelConfigModel): {
   // 检查 Sink 配置完整性
   model.sinks?.forEach((sink, index) => {
     if (!sink.plugin_input) {
-      errors.push(`Sink ${index + 1}: 缺少输入表名`)
+      errors.push(`Sink ${index + 1}: 缺少输入 Plugin`)
     }
+
+    if (!sink.datasourceId || sink.datasourceId === 0) {
+      errors.push(`Sink ${index + 1}: 必须选择数据源`)
+    }
+
     if (sink.plugin_name === 'Jdbc') {
-      if (!sink.table) {
+      if (!sink.table || sink.table.trim() === '') {
         errors.push(`Sink ${index + 1}: 必须指定目标表`)
       }
     } else if (sink.plugin_name === 'Doris') {
       const dorisSink = sink as any
-      if (!dorisSink.fenodes) {
+      if (!dorisSink.fenodes || dorisSink.fenodes.trim() === '') {
         errors.push(`Sink ${index + 1}: Doris 必须指定 fenodes`)
       }
-      if (!dorisSink.table) {
+      if (!sink.table || sink.table.trim() === '') {
         errors.push(`Sink ${index + 1}: Doris 必须指定目标表`)
       }
+    }
+  })
+
+  model.transforms?.forEach((transform, index) => {
+    if (!transform.plugin_input) {
+      errors.push(`Transform ${index + 1}: 必须指定输入 Plugin`)
+    }
+    if (!transform.plugin_output || transform.plugin_output.trim() === '') {
+      errors.push(`Transform ${index + 1}: 必须指定输出 Plugin`)
+    }
+    if (!transform.query || transform.query.trim() === '') {
+      errors.push(`Transform ${index + 1}: 必须输入 SQL 查询`)
     }
   })
 

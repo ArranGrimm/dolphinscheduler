@@ -65,14 +65,18 @@ export interface SinkConnectorBase {
   datasourceId: number
   datasourceType: DatasourceType
   plugin_input: string
+  url?: string
+  driver?: string
+  user?: string
+  password?: string
+  database?: string
+  table?: string
 }
 
 // Sink JDBC 配置
 export interface SinkJdbcConnector extends SinkConnectorBase {
   plugin_name: 'Jdbc'
   datasourceType: 'POSTGRESQL' | 'ORACLE'
-  database?: string
-  table?: string
   primary_keys?: string[]
   generate_sink_sql?: boolean
 }
@@ -81,11 +85,8 @@ export interface SinkJdbcConnector extends SinkConnectorBase {
 export interface SinkDorisConnector extends SinkConnectorBase {
   plugin_name: 'Doris'
   datasourceType: 'DORIS'
-  fenodes: string // 从 DS 数据源 URL 解析并转换端口
-  database: string
-  table: string
+  fenodes?: string // 从 DS 数据源 URL 解析并转换端口
   username?: string
-  password?: string
 }
 
 // Sink 高级选项

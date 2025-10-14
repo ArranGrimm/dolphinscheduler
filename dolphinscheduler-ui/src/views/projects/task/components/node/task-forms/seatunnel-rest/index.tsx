@@ -39,9 +39,16 @@ import type { INodeData } from '../../types'
 import type {
   SeaTunnelConfigModel,
   SourceConnector,
-  SinkConnector
+  SinkConnector,
+  TransformConnector,
+  SinkDorisConnector
 } from './types'
-import { generateJsonPreview, validateConfig } from './utils'
+import {
+  generateJsonPreview,
+  validateConfig,
+  convertDorisPort,
+  extractJdbcUrl
+} from './utils'
 import styles from './index.module.scss'
 import {
   queryDataSourceList,
@@ -82,6 +89,28 @@ export default defineComponent({
     const sourceDatasourceOptions = ref<any[]>([]) // Source 数据源（ORACLE + POSTGRESQL）
     const sinkDatasourceOptions = ref<any[]>([]) // Sink 数据源（ORACLE + POSTGRESQL + DORIS）
     const loadingDatasources = ref(false)
+    const loadingSinkDatasources = ref(false)
+
+    const pluginOutputOptions = computed(() => {
+      const options: { label: string; value: string }[] = []
+      configModel.sources.forEach((source, index) => {
+        if (source.plugin_output) {
+          options.push({
+            label: `Source ${index + 1} · ${source.plugin_output}`,
+            value: source.plugin_output
+          })
+        }
+      })
+      configModel.transforms.forEach((transform, index) => {
+        if (transform.plugin_output) {
+          options.push({
+            label: `Transform ${index + 1} · ${transform.plugin_output}`,
+            value: transform.plugin_output
+          })
+        }
+      })
+      return options
+    })
 
     const jsonPreview = computed(() => {
       return generateJsonPreview(configModel)
@@ -140,16 +169,47 @@ export default defineComponent({
       }
     }
 
-    // 加载 Sink 数据源（ORACLE + POSTGRESQL + DORIS）
-    // TODO: 后续实现 Sink 连接器时启用
-    const unusedLoadSinkDatasources = async () => {
-      // 暂时和 Source 一致，后续扩展 Doris
-      sinkDatasourceOptions.value = sourceDatasourceOptions.value
+    const loadSinkDatasources = async () => {
+      if (loadingSinkDatasources.value) return
+      loadingSinkDatasources.value = true
+      try {
+        const [pgList, oracleList, dorisList] = await Promise.all([
+          queryDataSourceList({ type: 'POSTGRESQL' }),
+          queryDataSourceList({ type: 'ORACLE' }),
+          queryDataSourceList({ type: 'DORIS' })
+        ])
+
+        sinkDatasourceOptions.value = [
+          ...(pgList || []).map((ds: any) => ({
+            label: `${ds.name} (PostgreSQL)`,
+            value: ds.id,
+            type: 'POSTGRESQL',
+            ...ds
+          })),
+          ...(oracleList || []).map((ds: any) => ({
+            label: `${ds.name} (Oracle)`,
+            value: ds.id,
+            type: 'ORACLE',
+            ...ds
+          })),
+          ...(dorisList || []).map((ds: any) => ({
+            label: `${ds.name} (Doris)`,
+            value: ds.id,
+            type: 'DORIS',
+            ...ds
+          }))
+        ]
+      } catch (unusedError) {
+        sinkDatasourceOptions.value = []
+      } finally {
+        loadingSinkDatasources.value = false
+      }
     }
 
     onMounted(() => {
       // 加载数据源列表
       loadSourceDatasources()
+      loadSinkDatasources()
 
       if (props.model.jobConfig) {
         try {
@@ -216,20 +276,137 @@ export default defineComponent({
       configModel.sources.splice(index, 1)
     }
 
+    const addTransform = () => {
+      const defaultInput = pluginOutputOptions.value[0]?.value || ''
+      configModel.transforms.push({
+        plugin_name: 'Sql',
+        plugin_input: defaultInput,
+        plugin_output: `transform_${configModel.transforms.length + 1}`,
+        query: ''
+      } as TransformConnector)
+    }
+
+    const removeTransform = (index: number) => {
+      configModel.transforms.splice(index, 1)
+    }
+
     const addSink = () => {
+      const defaultInput = pluginOutputOptions.value[0]?.value || ''
       configModel.sinks.push({
         plugin_name: 'Jdbc',
         datasourceId: 0,
         datasourceType: 'POSTGRESQL',
-        plugin_input: configModel.sources[0]?.plugin_output || 'source_1',
+        plugin_input: defaultInput,
         database: '',
-        table: ''
+        table: '',
+        url: '',
+        driver: '',
+        user: '',
+        password: ''
       } as SinkConnector)
+    }
+
+    const onSinkDatasourceChange = async (
+      sink: SinkConnector,
+      datasourceId: number
+    ) => {
+      const selectedDs = sinkDatasourceOptions.value.find(
+        (ds) => ds.value === datasourceId
+      )
+      if (!selectedDs) {
+        sink.datasourceType = 'POSTGRESQL'
+        sink.plugin_name = 'Jdbc'
+        return
+      }
+
+      sink.datasourceType = selectedDs.type
+      sink.datasourceId = datasourceId
+
+      try {
+        const dsDetail = await queryDataSource(datasourceId)
+        let connectionParams: Record<string, any> | undefined
+        const connectionParamsRaw = dsDetail?.connectionParams
+
+        if (connectionParamsRaw) {
+          if (typeof connectionParamsRaw === 'string') {
+            try {
+              connectionParams = JSON.parse(connectionParamsRaw)
+            } catch (unusedError) {
+              connectionParams = undefined
+            }
+          } else {
+            connectionParams = connectionParamsRaw
+          }
+        }
+
+        const connectionJdbcUrl = connectionParams
+          ? extractJdbcUrl(connectionParams)
+          : ''
+        const fallbackUrl = convertToJdbcUrl(dsDetail, selectedDs.type)
+        const jdbcUrl = connectionJdbcUrl || dsDetail?.jdbcUrl || fallbackUrl
+
+        if (selectedDs.type === 'POSTGRESQL') {
+          sink.plugin_name = 'Jdbc'
+          sink.driver = 'org.postgresql.Driver'
+          sink.url =
+            jdbcUrl ||
+            `jdbc:postgresql://${dsDetail.host || ''}:${dsDetail.port || ''}/${
+              dsDetail.database || ''
+            }`
+          sink.user = dsDetail.userName
+          sink.password = dsDetail.password
+          sink.database = connectionParams?.database || dsDetail.database || ''
+        } else if (selectedDs.type === 'ORACLE') {
+          sink.plugin_name = 'Jdbc'
+          sink.driver = 'oracle.jdbc.OracleDriver'
+          sink.url =
+            jdbcUrl ||
+            `jdbc:oracle:thin:@${dsDetail.host || ''}:${dsDetail.port || ''}:${
+              dsDetail.database || ''
+            }`
+          sink.user = dsDetail.userName
+          sink.password = dsDetail.password
+          sink.database = connectionParams?.database || dsDetail.database || ''
+        } else if (selectedDs.type === 'DORIS') {
+          sink.plugin_name = 'Doris'
+          sink.driver = ''
+          sink.url = jdbcUrl || fallbackUrl
+          const fenodes = convertDorisPort(sink.url || '')
+          ;(sink as SinkDorisConnector).fenodes = fenodes || ''
+          sink.database = connectionParams?.database || dsDetail.database || ''
+          sink.table = sink.table || ''
+          ;(sink as SinkDorisConnector).username =
+            connectionParams?.username || dsDetail.userName || ''
+          sink.user = connectionParams?.username || dsDetail.userName || ''
+          sink.password = dsDetail.password
+        }
+      } catch (unusedError) {
+        // ignore
+      }
     }
 
     const removeSink = (index: number) => {
       configModel.sinks.splice(index, 1)
     }
+
+    watch(
+      pluginOutputOptions,
+      (options) => {
+        const values = options.map((item) => item.value)
+        const fallback = values[0] || ''
+        configModel.transforms.forEach((transform) => {
+          if (!values.includes(transform.plugin_input)) {
+            transform.plugin_input = fallback
+          }
+        })
+        configModel.sinks.forEach((sink) => {
+          if (!values.includes(sink.plugin_input)) {
+            sink.plugin_input = fallback
+          }
+        })
+      },
+      { deep: true, immediate: true }
+    )
 
     const validate = async () => {
       const result = validateConfig(configModel)
@@ -354,6 +531,89 @@ export default defineComponent({
                     }}
                   </NCard>
 
+                  {/* Transform 配置 */}
+                  <NCard title='Transform 配置' size='small'>
+                    {{
+                      header: () => (
+                        <NSpace
+                          justify='space-between'
+                          align='center'
+                          class={styles['card-header']}
+                        >
+                          <NText>Transform 配置</NText>
+                          <NButton
+                            size='small'
+                            onClick={addTransform}
+                            disabled={
+                              props.readonly ||
+                              pluginOutputOptions.value.length === 0
+                            }
+                          >
+                            {{
+                              icon: () => (
+                                <NIcon>
+                                  <PlusCircleOutlined />
+                                </NIcon>
+                              ),
+                              default: () => '添加 Transform'
+                            }}
+                          </NButton>
+                        </NSpace>
+                      ),
+                      default: () =>
+                        configModel.transforms.length === 0 ? (
+                          <NSpace class={styles.placeholder}>
+                            <NText depth='3'>
+                              暂无 Transform 配置，请在 Source 配置完成后添加
+                            </NText>
+                          </NSpace>
+                        ) : (
+                          <NSpace vertical>
+                            {configModel.transforms.map((transform, index) => (
+                              <NCard key={index} size='small'>
+                                <NSpace vertical>
+                                  <NFormItem label='输入 Plugin' required>
+                                    <NSelect
+                                      v-model:value={transform.plugin_input}
+                                      options={pluginOutputOptions.value}
+                                      placeholder='选择输入 Plugin'
+                                      disabled={
+                                        props.readonly ||
+                                        pluginOutputOptions.value.length === 0
+                                      }
+                                    />
+                                  </NFormItem>
+                                  <NFormItem label='Plugin Output' required>
+                                    <NInput
+                                      v-model:value={transform.plugin_output}
+                                      placeholder={`transform_${index + 1}`}
+                                      disabled={props.readonly}
+                                    />
+                                  </NFormItem>
+                                  <NFormItem label='SQL 查询' required>
+                                    <NInput
+                                      v-model:value={transform.query}
+                                      type='textarea'
+                                      rows={4}
+                                      placeholder='SELECT * FROM ...'
+                                      disabled={props.readonly}
+                                    />
+                                  </NFormItem>
+                                  <NButton
+                                    size='small'
+                                    onClick={() => removeTransform(index)}
+                                    disabled={props.readonly}
+                                  >
+                                    删除
+                                  </NButton>
+                                </NSpace>
+                              </NCard>
+                            ))}
+                          </NSpace>
+                        )
+                    }}
+                  </NCard>
+
                   {/* Sink 配置 */}
                   <NCard title='Sink 配置' size='small'>
                     {{
@@ -367,7 +627,10 @@ export default defineComponent({
                           <NButton
                             size='small'
                             onClick={addSink}
-                            disabled={props.readonly}
+                            disabled={
+                              props.readonly ||
+                              pluginOutputOptions.value.length === 0
+                            }
                           >
                             {{
                               icon: () => (
@@ -384,38 +647,102 @@ export default defineComponent({
                         configModel.sinks.length === 0 ? (
                           <NSpace class={styles.placeholder}>
                             <NText depth='3'>
-                              暂无 Sink 配置,请点击右上角按钮添加
+                              暂无 Sink 配置，请先完成 Source/Transform 配置
                             </NText>
                           </NSpace>
                         ) : (
                           <NSpace vertical>
-                            {configModel.sinks.map((sink, index) => (
-                              <NCard key={index} size='small'>
-                                <NSpace vertical>
-                                  <NFormItem label='输入表名' required>
-                                    <NInput
-                                      v-model:value={sink.plugin_input}
-                                      placeholder='source_1'
-                                    />
-                                  </NFormItem>
-                                  {sink.plugin_name === 'Jdbc' && (
-                                    <NFormItem label='目标表'>
-                                      <NInput
-                                        v-model:value={sink.table}
-                                        placeholder='target_table'
+                            {configModel.sinks.map((sink, index) => {
+                              const isDoris = sink.plugin_name === 'Doris'
+                              const dorisSink = sink as SinkDorisConnector
+                              return (
+                                <NCard key={index} size='small'>
+                                  <NSpace vertical>
+                                    <NFormItem label='数据源' required>
+                                      <NSelect
+                                        v-model:value={sink.datasourceId}
+                                        options={sinkDatasourceOptions.value}
+                                        placeholder='选择数据源'
+                                        loading={loadingSinkDatasources.value}
+                                        disabled={props.readonly}
+                                        onUpdateValue={(value: number) =>
+                                          onSinkDatasourceChange(sink, value)
+                                        }
+                                        filterable
                                       />
                                     </NFormItem>
-                                  )}
-                                  <NButton
-                                    size='small'
-                                    onClick={() => removeSink(index)}
-                                    disabled={props.readonly}
-                                  >
-                                    删除
-                                  </NButton>
-                                </NSpace>
-                              </NCard>
-                            ))}
+                                    <NFormItem label='输入 Plugin' required>
+                                      <NSelect
+                                        v-model:value={sink.plugin_input}
+                                        options={pluginOutputOptions.value}
+                                        placeholder='选择输入 Plugin'
+                                        disabled={
+                                          props.readonly ||
+                                          pluginOutputOptions.value.length === 0
+                                        }
+                                      />
+                                    </NFormItem>
+                                    {!isDoris && (
+                                      <>
+                                        <NFormItem label='目标数据库'>
+                                          <NInput
+                                            v-model:value={sink.database}
+                                            placeholder='target_database'
+                                            disabled={props.readonly}
+                                          />
+                                        </NFormItem>
+                                        <NFormItem label='目标表' required>
+                                          <NInput
+                                            v-model:value={sink.table}
+                                            placeholder='target_table'
+                                            disabled={props.readonly}
+                                          />
+                                        </NFormItem>
+                                      </>
+                                    )}
+                                    {isDoris && (
+                                      <>
+                                        <NFormItem label='Fenodes' required>
+                                          <NInput
+                                            v-model:value={dorisSink.fenodes}
+                                            placeholder='host:8030'
+                                            disabled={props.readonly}
+                                          />
+                                        </NFormItem>
+                                        <NFormItem label='数据库' required>
+                                          <NInput
+                                            v-model:value={sink.database}
+                                            placeholder='doris_database'
+                                            disabled={props.readonly}
+                                          />
+                                        </NFormItem>
+                                        <NFormItem label='目标表' required>
+                                          <NInput
+                                            v-model:value={sink.table}
+                                            placeholder='doris_table'
+                                            disabled={props.readonly}
+                                          />
+                                        </NFormItem>
+                                        <NFormItem label='用户名'>
+                                          <NInput
+                                            v-model:value={dorisSink.username}
+                                            placeholder='doris_user'
+                                            disabled={props.readonly}
+                                          />
+                                        </NFormItem>
+                                      </>
+                                    )}
+                                    <NButton
+                                      size='small'
+                                      onClick={() => removeSink(index)}
+                                      disabled={props.readonly}
+                                    >
+                                      删除
+                                    </NButton>
+                                  </NSpace>
+                                </NCard>
+                              )
+                            })}
                           </NSpace>
                         )
                     }}
@@ -486,3 +813,23 @@ export default defineComponent({
     )
   }
 })
+
+function convertToJdbcUrl(detail: any, type: string): string {
+  if (!detail) return ''
+  if (type === 'POSTGRESQL') {
+    return `jdbc:postgresql://${detail.host || ''}:${detail.port || ''}/${
+      detail.database || ''
+    }`
+  }
+  if (type === 'ORACLE') {
+    return `jdbc:oracle:thin:@${detail.host || ''}:${detail.port || ''}:${
+      detail.database || ''
+    }`
+  }
+  if (type === 'DORIS') {
+    return `jdbc:mysql://${detail.host || ''}:${detail.port || ''}/${
+      detail.database || ''
+    }`
+  }
+  return ''
+}
