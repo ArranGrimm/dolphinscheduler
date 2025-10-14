@@ -437,8 +437,6 @@ dolphinscheduler-ui/src/views/projects/task/components/node/
 ## 8. 注意事项
 
 ### 8.1 现有项目规范
-- 使用 Bun 安装依赖（不使用 npm）[[memory:6281299]]
-- 使用 DaisyUI 颜色、Heroicons 图标、ApexCharts 图表 [[memory:8826200]]
 - 文档使用中文 [[memory:6502987]]
 
 ### 8.2 数据源映射
