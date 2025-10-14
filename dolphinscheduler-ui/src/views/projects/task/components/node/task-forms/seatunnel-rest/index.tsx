@@ -29,7 +29,8 @@ import {
   NCollapse,
   NCollapseItem,
   NIcon,
-  NText
+  NText,
+  NElement
 } from 'naive-ui'
 import { PlusCircleOutlined } from '@vicons/antd'
 import Monaco from '@/components/monaco-editor'
@@ -152,9 +153,9 @@ export default defineComponent({
     expose({ validate })
 
     return () => (
-      <NSpace wrap={false} class={styles['seatunnel-rest-form']}>
+      <NElement tag='div' class={styles['seatunnel-rest-form']}>
         {/* 左侧：表单区域 (58%) */}
-        <NSpace vertical class={styles['form-section']}>
+        <NElement tag='div' class={styles['form-section']}>
           <NForm ref={formRef} model={configModel} disabled={props.readonly}>
             <NTabs type='line' animated>
               {/* 基础配置 Tab */}
@@ -347,14 +348,14 @@ export default defineComponent({
               </NTabPane>
             </NTabs>
           </NForm>
-        </NSpace>
+        </NElement>
 
         {/* 右侧：JSON 预览区域 (42%) */}
-        <NSpace vertical class={styles['preview-section']}>
+        <NElement tag='div' class={styles['preview-section']}>
           <NText strong class={styles['preview-title']}>
             JSON 预览（实时生成）
           </NText>
-          <NSpace class={styles['preview-editor']}>
+          <NElement tag='div' class={styles['preview-editor']}>
             <Monaco
               v-model:value={jsonPreview.value}
               language='json'
@@ -367,9 +368,9 @@ export default defineComponent({
                 automaticLayout: true
               }}
             />
-          </NSpace>
-        </NSpace>
-      </NSpace>
+          </NElement>
+        </NElement>
+      </NElement>
     )
   }
 })

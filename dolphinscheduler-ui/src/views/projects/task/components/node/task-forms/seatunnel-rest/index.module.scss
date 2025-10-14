@@ -1,24 +1,27 @@
+
 .seatunnel-rest-form {
   width: 100%;
   min-height: 600px;
-  display: flex !important;
-  flex-direction: row !important;
-  flex-wrap: nowrap !important;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   gap: 16px;
 }
 
 .form-section {
-  flex: 0 0 58%;
+  flex: 58 1 0;
   min-width: 0;
   overflow-y: auto;
   padding-right: 8px;
+  display: flex;
+  flex-direction: column;
 }
 
 .preview-section {
-  flex: 0 0 42%;
+  flex: 42 1 0;
   min-width: 0;
-  display: flex !important;
-  flex-direction: column !important;
+  display: flex;
+  flex-direction: column;
   border-left: 1px solid #e8e8e8;
   padding-left: 16px;
 }
