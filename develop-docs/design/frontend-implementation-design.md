@@ -394,45 +394,45 @@ const formRules = {
 
 ```
 dolphinscheduler-ui/src/views/projects/task/components/node/
+├── detail.tsx                         # 根据任务类型选择表单组件
+├── detail-modal.tsx                   # 弹窗载体，支持自定义宽度
+├── task-forms/
+│   └── seatunnel-rest/
+│       ├── index.tsx                  # 主表单组件（基础/高级配置 + JSON 预览）
+│       ├── index.module.scss          # 表单样式（左右分栏布局）
+│       ├── types.ts                   # 配置模型与表单类型定义
+│       └── utils.ts                   # JDBC 解析、JSON 生成、校验工具函数
 ├── tasks/
-│   ├── use-seatunnel-rest.ts         # 现有文件（保持最小配置）
-│   └── use-seatunnel-rest-enhanced.ts # 新增：增强版配置
-├── fields/
-│   ├── use-seatunnel-rest.ts         # 现有文件
-│   └── use-seatunnel-connector.ts    # 新增：连接器字段定义
-└── components/
-    └── seatunnel/                     # 新增目录
-        ├── SourceConnector.tsx        # Source 连接器组件
-        ├── SinkConnector.tsx          # Sink 连接器组件
-        ├── TransformEditor.tsx        # Transform 编辑器
-        ├── JsonPreview.tsx            # JSON 预览组件
-        ├── ConnectorList.tsx          # 连接器列表管理
-        └── types.ts                   # 类型定义
+│   └── use-seatunnel-rest.ts          # 任务初始模型（通用字段）
+└── format-data.ts                     # 前端 -> 后端 taskParams 格式化
 ```
+
+---
 
 ## 7. 实施步骤
 
-### Phase 1: 基础增强（优先）
-1. ✅ 创建设计文档
-2. ✅ 创建 Tabs 分组（基础/高级）
-3. ✅ 实现 Source 连接器动态选择（简化版 - 仅数据源+SQL+Plugin Output）
-4. 🔲 实现 Sink 连接器动态选择（POSTGRESQL + ORACLE + DORIS）
-5. ✅ 集成数据源 API（queryDataSourceList + queryDataSource）
+### Phase 1: 基础增强
+- ✅ 创建设计文档
+- ✅ 创建 Tabs 分组（基础/高级）
+- ✅ 实现 Source 连接器动态选择（简化版：数据源 + SQL + Plugin Output）
+- ✅ 集成数据源 API（`queryDataSourceList` + `queryDataSource`）
 
 ### Phase 2: JSON 预览
-1. ✅ 创建 JSON 预览组件（Monaco Editor）
-2. ✅ 实现密码加密显示（user/password 显示 ***）
-3. ✅ 实现实时同步（watchEffect 监听配置变化）
+- ✅ 创建 JSON 预览组件（Monaco Editor）
+- ✅ 密码加密显示（user/password -> `***`）
+- ✅ 实时同步配置（`watchEffect` 监听模型变化）
 
 ### Phase 3: 高级功能
-1. 🔲 添加 Transform 支持
-2. 🔲 完善表单验证（必填项校验 + 自定义规则）
-3. 🔲 添加连接器模板
+- ⏳ Sink 连接器动态选择（POSTGRESQL / ORACLE / DORIS）
+- ⏳ Transform 支持（SQL 编辑 + 输入输出关联）
+- ⏳ 完善表单验证（校验规则与提示）
 
 ### Phase 4: 优化与测试
-1. 🔲 性能优化
-2. ✅ 用户体验优化（两栏布局 + 无动画 + 响应式 flex）
-3. 🔲 端到端测试
+- ✅ 用户体验优化（自适应布局、移除动画、Flex 溢出修复）
+- ⏳ 性能优化（渲染性能、懒加载等，如有需要）
+- ⏳ 端到端测试
+
+---
 
 ## 8. 注意事项
 
@@ -501,10 +501,21 @@ getDatasourceTableColumnsById(datasourceId, database, tableName)
 
 ---
 
+## 11. 实施进度摘要
+
+| 阶段 | 目标 | 状态 |
+|------|------|------|
+| Phase 1 | 基础增强：Tabs、Source 简化、数据源集成 | ✅ 已完成 |
+| Phase 2 | JSON 预览：Monaco + 密码掩码 + 实时同步 | ✅ 已完成 |
+| Phase 3 | 高级功能：Sink（JDBC + Doris）、Transform、校验 | ⏳ 进行中 |
+| Phase 4 | 优化与测试：体验优化、性能、端到端测试 | 部分完成（体验 ✅，其他待定） |
+
+---
+
 **文档版本**: v1.1  
 **创建时间**: 2025-10-13  
 **最后更新**: 2025-10-14  
 **变更记录**:
-- v1.1 (2025-10-14): 简化 Source 配置，移除不必要的选项，更新实施进度
+- v1.1 (2025-10-14): 简化 Source 配置，更新文件结构与实施进度
 - v1.0 (2025-10-13): 初始版本
 

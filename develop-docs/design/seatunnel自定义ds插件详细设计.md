@@ -67,49 +67,21 @@
 6.  **[后端]** 插件解析 JSON，调用 SeaTunnel REST API 提交任务。
 7.  **[后端]** 插件轮询 SeaTunnel REST API 获取状态和日志，并向 DS Master 汇报。
 
-### **4. 前端组件详细设计 (`SeaTunnelRestNode.vue`)**
+### **4. 前端组件设计**
 
-本节详细定义 SeaTunnel REST 任务节点的配置弹窗组件，它将是你放弃 React Demo 后，用 Vue 重写的核心。
+前端组件采用 Vue 3 + TypeScript + Naive UI 技术栈，实现可视化配置界面。
 
-#### **4.1 技术选型**
+**详细设计文档**: 请参考 [`frontend-implementation-design.md`](./frontend-implementation-design.md)
 
-  * **UI 库**: `Naive UI` (与 DS 保持一致)。
-  * **状态管理**: `Pinia` (用于管理复杂的表单状态)。
-  * **代码编辑器**: `Monaco Editor` (用于 SQL 等代码片段的编写)。
+**核心特性**:
+- 左右分栏布局（60% 表单 + 40% JSON 预览）
+- Tabs 分组（基础配置 + 高级配置）
+- 动态连接器管理（Source/Transform/Sink）
+- 实时 JSON 预览（Monaco Editor）
+- 数据源集成（自动提取 JDBC 连接信息）
+- 密码加密显示
 
-#### **4.2 UI 布局与核心功能**
-
-采用左右分栏布局，完全复刻你原有设计中的精华。
-
-  * **左侧 (PipelineBuilder)**: 可视化流水线构建区域。
-      * **Env 配置**: 一个独立的卡片，用于配置 `job.name` 等环境参数。
-      * **Source/Transform/Sink 区域**: 三个独立的列表区域，用户可以点击“+”号从预设的连接器列表中选择并添加配置卡片。
-  * **右侧 (ConfigPreview)**: 只读的 JSON 预览区域，实时根据左侧的表单变化，生成并美化展示最终将提交的 JSON 配置，方便用户调试和确认。
-
-#### **4.3 组件拆分方案**
-
-  * **`SeaTunnelRestNode.vue`**: 根组件，负责整体布局、弹窗的显示/隐藏逻辑，以及与 DS 的数据交互（加载/保存 JSON）。
-  * **`PipelineBuilder.vue`**: 左侧流水线构建器，管理三个 `ConnectorListView`。
-  * **`ConnectorListView.vue`**: 连接器列表，负责管理一个阶段（Source/Transform/Sink）的所有连接器卡片，处理添加、删除、排序逻辑。
-  * **`ConnectorCard.vue`**: 单个连接器配置卡片，包含标题、操作按钮（删除、折叠），并动态加载核心表单。
-  * **`DynamicConnectorForm.vue`**: **核心动态表单组件**。它接收一个预定义的 Schema（描述了连接器有哪些参数、类型、标签、默认值等），然后动态渲染出对应的 `Naive UI` 表单项。表单项通过 `n-collapse` 或 `n-tabs` 分为“基础”和“高级”选项。
-
-#### **4.4 状态管理 (Pinia)**
-
-创建一个 `useSeaTunnelRestNodeStore`，其 state 结构严格映射最终的 SeaTunnel JSON 结构，例如：
-
-```typescript
-{
-  env: { 'job.name': 'default_job' },
-  source: [/* an array of source connector configs */],
-  transform: [/* ... */],
-  sink: [/* ... */]
-}
-```
-
-所有表单组件都通过这个 store 进行数据的双向绑定，确保数据源的唯一和一致性。
-
-### **5. 后端插件详细设计 (Java)**
+### **5. 后端插件详细设计**
 
 #### **5.1 参数模型 (`SeaTunnelRestParameters.java`)**
 
@@ -165,31 +137,27 @@ public class SeaTunnelRestParameters extends AbstractParameters {
 
 ### **6. 开发实施路线图**
 
-建议采用分阶段、由后到前的策略进行开发：
+**当前状态**: 阶段三已完成，正在进行阶段四（前端高级功能）
 
-1.  **阶段一：后端核心逻辑验证**
+详细的项目计划和任务追踪，请参考 [`project-plan.md`](../plan/project-plan.md)
 
-      * **任务**: 开发基础的 `SeaTunnelRestTask.java`。在代码中硬编码一个可执行的 SeaTunnel 配置 JSON。
-      * **目标**: 跑通“提交任务 -\> 轮询状态 -\> 正确返回成功/失败”的核心流程。确保与 SeaTunnel API 的交互没有问题。
+**已完成阶段**:
+- ✅ 阶段一：后端核心逻辑验证（2025-10-10）
+- ✅ 阶段二：前后端初步打通（2025-10-13）
+- ✅ 阶段三：前端最小可用配置（2025-10-13）
+- 🔄 阶段四：前端高级功能开发（进行中）
 
-2.  **阶段二：前后端初步打通**
+**当前任务**:
+- ✅ Source 连接器动态选择（已完成）
+- ⏳ Sink 连接器动态选择（进行中）
+- ⏳ Transform 支持
+- ⏳ 后端代码优化
 
-      * **任务**:
-          * 后端：实现 `SeaTunnelRestParameters.java` 和参数反序列化逻辑。
-          * 前端：在 DS UI 中创建最简单的 `SeaTunnelRestNode.vue`，只包含一个 `textarea`。
-      * **目标**: 能够在前端 `textarea` 中粘贴完整的 JSON，保存后，后端插件能正确接收并执行。
+---
 
-3.  **阶段三：前端富交互界面开发**
-
-      * **任务**: 集中精力开发 `SeaTunnelRestNode.vue` 及其子组件，实现设计稿中的所有可视化配置功能。
-      * **目标**: 交付一个用户体验优秀的配置界面，它能正确地生成符合预期的 JSON 字符串。
-
-4.  **阶段四：端到端集成与优化**
-
-      * **任务**: 联调前后端，修复 Bug，优化体验。
-      * **目标**: 交付一个功能完整、稳定可靠的 SeaTunnel 原生任务插件。
-      * **可选优化**: 实现前端动态获取可选的连接器列表、从 DS 数据源中心获取连接信息等高级功能。
-
------
-
-这份文档结合了你的远见和集成的现实，希望能为你接下来的开发工作提供清晰的指引。祝你开发顺利！
+**文档版本**: v1.1  
+**创建时间**: 2025-10-10  
+**最后更新**: 2025-10-14  
+**变更记录**:
+- v1.1 (2025-10-14): 精简前端设计部分，添加链接到详细文档，更新开发路线图
+- v1.0 (2025-10-10): 初始版本
