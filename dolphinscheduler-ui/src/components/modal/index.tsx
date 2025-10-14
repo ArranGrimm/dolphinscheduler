@@ -68,6 +68,14 @@ const props = {
   headerLinks: {
     type: Object as PropType<Ref<Array<LinkOption>>>,
     default: [] as LinkOption[]
+  },
+  class: {
+    type: String as PropType<string>,
+    default: ''
+  },
+  style: {
+    type: Object as PropType<Record<string, any>>,
+    default: () => ({})
   }
 }
 
@@ -106,7 +114,8 @@ const Modal = defineComponent({
     return (
       <NModal
         v-model={[this.show, 'show']}
-        class={styles.container}
+        class={[styles.container, this.class]}
+        style={this.style}
         mask-closable={false}
         auto-focus={this.autoFocus}
         onMaskClick={onMaskClick}

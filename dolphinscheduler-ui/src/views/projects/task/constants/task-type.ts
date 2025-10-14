@@ -33,6 +33,7 @@ export type TaskType =
   | 'DATA_QUALITY'
   | 'SWITCH'
   | 'SEATUNNEL'
+  | 'SEATUNNEL_REST'
   | 'EMR'
   | 'ZEPPELIN'
   | 'K8S'
@@ -116,6 +117,10 @@ export const TASK_TYPES_MAP = {
   },
   SEATUNNEL: {
     alias: 'SeaTunnel',
+    helperLinkDisable: true
+  },
+  SEATUNNEL_REST: {
+    alias: 'SeaTunnel REST',
     helperLinkDisable: true
   },
   EMR: {

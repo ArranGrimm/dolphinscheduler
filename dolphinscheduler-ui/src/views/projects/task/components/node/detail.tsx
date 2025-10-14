@@ -19,6 +19,7 @@ import { defineComponent, ref, watch, inject, Ref, unref } from 'vue'
 import Form from '@/components/form'
 import { useTask } from './use-task'
 import { useTaskNodeStore } from '@/store/project/task-node'
+import SeaTunnelRestForm from './task-forms/seatunnel-rest'
 import type { ITaskData, EditWorkflowDefinition } from './types'
 
 interface IDetailPanel {
@@ -64,20 +65,34 @@ const NodeDetail = defineComponent({
 
     expose(formRef)
 
-    return () => (
-      <Form
-        ref={formRef}
-        meta={{
-          model,
-          rules: rulesRef.value,
-          elements: elementsRef.value,
-          disabled: unref(readonly)
-        }}
-        layout={{
-          xGap: 10
-        }}
-      />
-    )
+    return () => {
+      // 如果是 SEATUNNEL_REST 任务类型，使用自定义表单
+      if (model.taskType === 'SEATUNNEL_REST') {
+        return (
+          <SeaTunnelRestForm
+            ref={formRef}
+            model={model}
+            readonly={unref(readonly)}
+          />
+        )
+      }
+
+      // 其他任务类型使用通用表单
+      return (
+        <Form
+          ref={formRef}
+          meta={{
+            model,
+            rules: rulesRef.value,
+            elements: elementsRef.value,
+            disabled: unref(readonly)
+          }}
+          layout={{
+            xGap: 10
+          }}
+        />
+      )
+    }
   }
 })
 

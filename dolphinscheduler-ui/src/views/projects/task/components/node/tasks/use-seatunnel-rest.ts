@@ -65,7 +65,6 @@ export function useSeaTunnelRest({
       ...Fields.useFailed(),
       Fields.useDelayTime(model),
       ...Fields.useTimeoutAlarm(model),
-      ...Fields.useSeaTunnelRest(model),
       Fields.usePreTasks()
     ] as IJsonItem[],
     model

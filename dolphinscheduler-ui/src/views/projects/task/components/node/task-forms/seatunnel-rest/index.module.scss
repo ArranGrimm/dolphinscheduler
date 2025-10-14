@@ -1,0 +1,49 @@
+.seatunnel-rest-form {
+  width: 100%;
+  min-height: 600px;
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  gap: 16px;
+}
+
+.form-section {
+  flex: 0 0 58%;
+  min-width: 0;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.preview-section {
+  flex: 0 0 42%;
+  min-width: 0;
+  display: flex !important;
+  flex-direction: column !important;
+  border-left: 1px solid #e8e8e8;
+  padding-left: 16px;
+}
+
+.preview-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #333;
+}
+
+.preview-editor {
+  flex: 1;
+  min-height: 0;
+}
+
+.placeholder {
+  text-align: center;
+  padding: 20px;
+  color: #999;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
