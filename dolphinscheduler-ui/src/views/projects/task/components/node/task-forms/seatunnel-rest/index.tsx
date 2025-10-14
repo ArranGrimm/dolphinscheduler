@@ -30,7 +30,8 @@ import {
   NCollapseItem,
   NIcon,
   NText,
-  NElement
+  NElement,
+  NSelect
 } from 'naive-ui'
 import { PlusCircleOutlined } from '@vicons/antd'
 import Monaco from '@/components/monaco-editor'
@@ -42,6 +43,10 @@ import type {
 } from './types'
 import { generateJsonPreview, validateConfig } from './utils'
 import styles from './index.module.scss'
+import {
+  queryDataSourceList,
+  queryDataSource
+} from '@/service/modules/data-source'
 
 export default defineComponent({
   name: 'SeaTunnelRestForm',
@@ -73,6 +78,11 @@ export default defineComponent({
       showAdvancedOptions: false
     })
 
+    // 数据源相关状态（简化版）
+    const sourceDatasourceOptions = ref<any[]>([]) // Source 数据源（ORACLE + POSTGRESQL）
+    const sinkDatasourceOptions = ref<any[]>([]) // Sink 数据源（ORACLE + POSTGRESQL + DORIS）
+    const loadingDatasources = ref(false)
+
     const jsonPreview = computed(() => {
       return generateJsonPreview(configModel)
     })
@@ -99,7 +109,48 @@ export default defineComponent({
       { deep: true }
     )
 
+    // 加载 Source 数据源（ORACLE + POSTGRESQL）
+    const loadSourceDatasources = async () => {
+      if (loadingDatasources.value) return
+      loadingDatasources.value = true
+      try {
+        const [pgList, oracleList] = await Promise.all([
+          queryDataSourceList({ type: 'POSTGRESQL' }),
+          queryDataSourceList({ type: 'ORACLE' })
+        ])
+
+        sourceDatasourceOptions.value = [
+          ...(pgList || []).map((ds: any) => ({
+            label: `${ds.name} (PostgreSQL)`,
+            value: ds.id,
+            type: 'POSTGRESQL',
+            ...ds
+          })),
+          ...(oracleList || []).map((ds: any) => ({
+            label: `${ds.name} (Oracle)`,
+            value: ds.id,
+            type: 'ORACLE',
+            ...ds
+          }))
+        ]
+      } catch (unusedError) {
+        sourceDatasourceOptions.value = []
+      } finally {
+        loadingDatasources.value = false
+      }
+    }
+
+    // 加载 Sink 数据源（ORACLE + POSTGRESQL + DORIS）
+    // TODO: 后续实现 Sink 连接器时启用
+    const unusedLoadSinkDatasources = async () => {
+      // 暂时和 Source 一致，后续扩展 Doris
+      sinkDatasourceOptions.value = sourceDatasourceOptions.value
+    }
+
     onMounted(() => {
+      // 加载数据源列表
+      loadSourceDatasources()
+
       if (props.model.jobConfig) {
         try {
           const config = JSON.parse(props.model.jobConfig)
@@ -118,9 +169,47 @@ export default defineComponent({
         plugin_name: 'Jdbc',
         datasourceId: 0,
         datasourceType: 'POSTGRESQL',
-        queryMode: 'table',
+        query: '',
         plugin_output: `source_${configModel.sources.length + 1}`
-      } as SourceConnector)
+      })
+    }
+
+    // 当数据源改变时，自动更新数据源类型并提取 JDBC 连接信息
+    const onSourceDatasourceChange = async (
+      source: SourceConnector,
+      datasourceId: number
+    ) => {
+      const selectedDs = sourceDatasourceOptions.value.find(
+        (ds) => ds.value === datasourceId
+      )
+      if (selectedDs) {
+        source.datasourceType = selectedDs.type
+
+        try {
+          // 获取数据源详细信息
+          const dsDetail = await queryDataSource(datasourceId)
+
+          // 提取 JDBC 连接信息
+          if (dsDetail) {
+            // 构造 JDBC URL
+            let jdbcUrl = ''
+            if (selectedDs.type === 'POSTGRESQL') {
+              jdbcUrl = `jdbc:postgresql://${dsDetail.host}:${dsDetail.port}/${dsDetail.database}`
+              source.driver = 'org.postgresql.Driver'
+            } else if (selectedDs.type === 'ORACLE') {
+              // Oracle URL 格式: jdbc:oracle:thin:@host:port:sid 或 jdbc:oracle:thin:@host:port/service
+              jdbcUrl = `jdbc:oracle:thin:@${dsDetail.host}:${dsDetail.port}:${dsDetail.database}`
+              source.driver = 'oracle.jdbc.OracleDriver'
+            }
+
+            source.url = jdbcUrl
+            source.user = dsDetail.userName
+            source.password = dsDetail.password
+          }
+        } catch (unusedError) {
+          // 获取数据源详情失败，忽略错误
+        }
+      }
     }
 
     const removeSource = (index: number) => {
@@ -221,10 +310,33 @@ export default defineComponent({
                             {configModel.sources.map((source, index) => (
                               <NCard key={index} size='small'>
                                 <NSpace vertical>
-                                  <NFormItem label='输出表名' required>
+                                  <NFormItem label='数据源' required>
+                                    <NSelect
+                                      v-model:value={source.datasourceId}
+                                      options={sourceDatasourceOptions.value}
+                                      placeholder='选择数据源'
+                                      loading={loadingDatasources.value}
+                                      disabled={props.readonly}
+                                      onUpdateValue={(value: number) =>
+                                        onSourceDatasourceChange(source, value)
+                                      }
+                                      filterable
+                                    />
+                                  </NFormItem>
+                                  <NFormItem label='SQL 查询' required>
+                                    <NInput
+                                      v-model:value={source.query}
+                                      type='textarea'
+                                      placeholder='SELECT * FROM your_table WHERE ...'
+                                      rows={4}
+                                      disabled={props.readonly}
+                                    />
+                                  </NFormItem>
+                                  <NFormItem label='Plugin Output' required>
                                     <NInput
                                       v-model:value={source.plugin_output}
                                       placeholder='source_1'
+                                      disabled={props.readonly}
                                     />
                                   </NFormItem>
                                   <NButton

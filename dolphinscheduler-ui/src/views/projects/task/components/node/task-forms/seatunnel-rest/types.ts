@@ -22,9 +22,6 @@
 // 支持的数据源类型
 export type DatasourceType = 'POSTGRESQL' | 'ORACLE' | 'DORIS'
 
-// 查询模式
-export type QueryMode = 'table' | 'sql'
-
 // Env 配置
 export interface EnvConfig {
   'job.mode'?: 'BATCH' | 'STREAMING'
@@ -33,31 +30,19 @@ export interface EnvConfig {
   [key: string]: any
 }
 
-// Source 连接器基础配置
-export interface SourceConnectorBase {
+// Source 连接器配置（简化版）
+export interface SourceConnector {
   plugin_name: 'Jdbc'
   datasourceId: number
-  datasourceType: DatasourceType
-  plugin_output: string
-  queryMode: QueryMode
-}
-
-// Source 表模式配置
-export interface SourceTableMode extends SourceConnectorBase {
-  queryMode: 'table'
-  database?: string
-  table?: string
-  where_condition?: string
-}
-
-// Source SQL 模式配置
-export interface SourceSqlMode extends SourceConnectorBase {
-  queryMode: 'sql'
-  query: string
-}
-
-// Source 高级选项
-export interface SourceAdvancedOptions {
+  datasourceType: DatasourceType // 从数据源自动推断
+  query: string // SQL 查询
+  plugin_output: string // 输出表名
+  // JDBC 连接信息（从数据源自动提取）
+  url?: string
+  driver?: string
+  user?: string
+  password?: string
+  // 高级选项（可选）
   partition_column?: string
   partition_num?: number
   partition_lower_bound?: number
@@ -66,10 +51,6 @@ export interface SourceAdvancedOptions {
   fetch_size?: number
   connection_check_timeout_sec?: number
 }
-
-// Source 完整配置
-export type SourceConnector = (SourceTableMode | SourceSqlMode) &
-  Partial<SourceAdvancedOptions>
 
 // Transform SQL 配置
 export interface TransformConnector {

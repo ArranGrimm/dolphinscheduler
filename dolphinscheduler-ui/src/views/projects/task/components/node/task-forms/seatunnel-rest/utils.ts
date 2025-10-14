@@ -104,29 +104,32 @@ export function generateSeaTunnelConfig(
     config.env = { ...model.env }
   }
 
-  // Source 配置
+  // Source 配置（简化版 - 只支持 SQL 查询）
   if (model.sources && model.sources.length > 0) {
     config.source = model.sources.map((s) => {
       const source: any = {
-        plugin_name: s.plugin_name
+        plugin_name: s.plugin_name,
+        query: s.query,
+        plugin_output: s.plugin_output
       }
 
-      if (s.queryMode === 'table') {
-        if (s.database) source.database = s.database
-        if (s.table) source.table = s.table
-        if (s.where_condition) source.where_condition = s.where_condition
-      } else {
-        if (s.query) source.query = s.query
+      // JDBC 连接信息
+      if (s.url) source.url = s.url
+      if (s.driver) source.driver = s.driver
+      if (s.user) {
+        source.user = maskSensitive ? '***' : s.user
+      }
+      if (s.password) {
+        source.password = maskSensitive ? '***' : s.password
       }
 
-      // 输出表名
-      source.plugin_output = s.plugin_output
-
-      // 高级选项
+      // 高级选项（可选）
       if (s.partition_column) source.partition_column = s.partition_column
       if (s.partition_num) source.partition_num = s.partition_num
       if (s['split.size']) source['split.size'] = s['split.size']
       if (s.fetch_size) source.fetch_size = s.fetch_size
+      if (s.connection_check_timeout_sec)
+        source.connection_check_timeout_sec = s.connection_check_timeout_sec
 
       return source
     })
@@ -226,19 +229,16 @@ export function validateConfig(model: SeaTunnelConfigModel): {
     errors.push('至少需要配置一个 Sink 连接器')
   }
 
-  // 检查 Source 配置完整性
+  // 检查 Source 配置完整性（简化版）
   model.sources?.forEach((source, index) => {
-    if (!source.plugin_output) {
-      errors.push(`Source ${index + 1}: 缺少输出表名`)
+    if (!source.datasourceId || source.datasourceId === 0) {
+      errors.push(`Source ${index + 1}: 必须选择数据源`)
     }
-    if (source.queryMode === 'table') {
-      if (!source.table) {
-        errors.push(`Source ${index + 1}: 表模式下必须选择表`)
-      }
-    } else {
-      if (!source.query) {
-        errors.push(`Source ${index + 1}: SQL模式下必须输入查询语句`)
-      }
+    if (!source.query || source.query.trim() === '') {
+      errors.push(`Source ${index + 1}: 必须输入 SQL 查询`)
+    }
+    if (!source.plugin_output || source.plugin_output.trim() === '') {
+      errors.push(`Source ${index + 1}: 必须指定 Plugin Output`)
     }
   })
 
