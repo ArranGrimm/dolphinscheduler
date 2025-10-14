@@ -117,27 +117,35 @@ const DATASOURCE_TYPE_MAP = {
 }
 ```
 
-#### Source 配置（动态多连接器）
+#### Source 配置（动态多连接器）- **简化版**
 ```typescript
 interface SourceConfig {
-  plugin_name: 'Jdbc' // 固定值，后端根据数据源类型自动确定
-  datasourceId: number // 从 DS 数据源中选择（必填）
-  datasourceType: 'POSTGRESQL' | 'ORACLE' // 数据源类型（必填）
+  plugin_name: 'Jdbc' // 固定值
+  datasourceId: number // 从 DS 数据源中选择（必填，仅限 POSTGRESQL + ORACLE）
+  datasourceType: 'POSTGRESQL' | 'ORACLE' // 数据源类型（自动推断，不需要用户选择）
   
-  // 表选择模式（二选一）
-  queryMode: 'table' | 'sql'
+  // JDBC 连接信息（从数据源自动提取）
+  url?: string // 自动生成：jdbc:postgresql://host:port/db 或 jdbc:oracle:thin:@host:port:db
+  driver?: string // 自动设置：org.postgresql.Driver 或 oracle.jdbc.OracleDriver
+  user?: string // 从数据源自动提取
+  password?: string // 从数据源自动提取
   
-  // 模式1: 直接选择表
-  database?: string // 数据库名（自动填充或选择）
-  table?: string // 表名（下拉选择）
+  // SQL 查询（唯一的查询方式）
+  query: string // SQL 查询语句（必填）
   
-  // 模式2: 自定义 SQL
-  query?: string // SQL 查询（文本框）
-  
-  // 输出表名（必填）
-  plugin_output: string
+  // Plugin Output（必填）
+  plugin_output: string // 输出名称，供后续 Transform/Sink 引用
 }
 ```
+
+**简化说明**（基于实际使用反馈）：
+1. ❌ **移除数据源类型选择** - Oracle/PG 都用 Jdbc 连接器，自动推断即可
+2. ✅ **保留数据源选择** - 核心功能，通过 DS 数据源管理获取连接信息
+3. ❌ **移除查询模式选择** - 只保留 SQL 模式，SeaTunnel 自动生成的 SQL 可能有问题
+4. ❌ **移除数据库选择** - 从数据源 URL 自动解析
+5. ❌ **移除表选择** - 由 SQL 决定
+6. ✅ **保留 SQL 查询** - 核心功能，用户自定义 SQL 更可控
+7. 📝 **输出名称改名** - 从"输出表名"改为"Plugin Output"，符合 SeaTunnel 术语
 
 #### Transform 配置（可选，暂时只支持 SQL）
 ```typescript
@@ -209,44 +217,74 @@ interface SinkConfig {
 
 ### 5.1 动态连接器管理
 
-#### Source 连接器组件
+#### Source 连接器组件（简化版实现）
 ```typescript
-// components/SourceConnector.tsx
-import { defineComponent, ref } from 'vue'
-import { useDatasource } from '@/views/projects/task/components/node/fields/use-datasource'
+// task-forms/seatunnel-rest/index.tsx
+import { queryDataSourceList, queryDataSource } from '@/service/modules/data-source'
 
-export default defineComponent({
-  props: {
-    modelValue: Object,
-    index: Number
-  },
-  setup(props, { emit }) {
-    const model = ref({
-      datasourceType: null,
-      datasourceId: null,
-      queryMode: 'table',
-      database: null,
-      table: null,
-      query: null,
-      plugin_output: `source_${props.index + 1}`
+// 加载数据源列表
+const loadSourceDatasources = async () => {
+  try {
+    loadingDatasources.value = true
+    const result = await queryDataSourceList({
+      type: 'POSTGRESQL,ORACLE', // 仅支持这两种类型
+      testFlag: 0
     })
-    
-    // 使用现有的 useDatasource hook
-    const datasourceFields = useDatasource(model, {
-      supportedDatasourceType: ['POSTGRESQL', 'ORACLE']
-    })
-    
-    // 当选择数据源后，自动加载数据库列表
-    const onDatasourceChange = async () => {
-      if (model.value.datasourceId) {
-        const databases = await getDatasourceDatabasesById(model.value.datasourceId)
-        // ...
-      }
-    }
-    
-    return { model, datasourceFields, onDatasourceChange }
+    sourceDatasourceOptions.value = result.map((ds) => ({
+      label: ds.name,
+      value: ds.id,
+      type: ds.type
+    }))
+  } finally {
+    loadingDatasources.value = false
   }
-})
+}
+
+// 当数据源改变时，自动提取 JDBC 连接信息
+const onSourceDatasourceChange = async (
+  source: SourceConnector,
+  datasourceId: number
+) => {
+  const selectedDs = sourceDatasourceOptions.value.find(
+    (ds) => ds.value === datasourceId
+  )
+  if (selectedDs) {
+    source.datasourceType = selectedDs.type // 自动推断类型
+    
+    try {
+      const dsDetail = await queryDataSource(datasourceId)
+      
+      if (dsDetail) {
+        // 构造 JDBC URL
+        let jdbcUrl = ''
+        if (selectedDs.type === 'POSTGRESQL') {
+          jdbcUrl = `jdbc:postgresql://${dsDetail.host}:${dsDetail.port}/${dsDetail.database}`
+          source.driver = 'org.postgresql.Driver'
+        } else if (selectedDs.type === 'ORACLE') {
+          jdbcUrl = `jdbc:oracle:thin:@${dsDetail.host}:${dsDetail.port}:${dsDetail.database}`
+          source.driver = 'oracle.jdbc.OracleDriver'
+        }
+        
+        source.url = jdbcUrl
+        source.user = dsDetail.userName
+        source.password = dsDetail.password
+      }
+    } catch (unusedError) {
+      // 获取数据源详情失败，静默忽略
+    }
+  }
+}
+```
+
+**UI 表单结构**：
+```
+┌──────────────────────────────────────┐
+│ Source #1                      [删除] │
+├──────────────────────────────────────┤
+│ 数据源: [下拉选择 PostgreSQL/Oracle] │
+│ SQL 查询: [多行文本输入框]             │
+│ Plugin Output: [source_1]            │
+└──────────────────────────────────────┘
 ```
 
 #### Sink 连接器组件
@@ -376,24 +414,24 @@ dolphinscheduler-ui/src/views/projects/task/components/node/
 
 ### Phase 1: 基础增强（优先）
 1. ✅ 创建设计文档
-2. 🔲 创建 Tabs 分组（基础/高级）
-3. 🔲 实现 Source 连接器动态选择
-4. 🔲 实现 Sink 连接器动态选择
-5. 🔲 集成数据源 API
+2. ✅ 创建 Tabs 分组（基础/高级）
+3. ✅ 实现 Source 连接器动态选择（简化版 - 仅数据源+SQL+Plugin Output）
+4. 🔲 实现 Sink 连接器动态选择（POSTGRESQL + ORACLE + DORIS）
+5. ✅ 集成数据源 API（queryDataSourceList + queryDataSource）
 
 ### Phase 2: JSON 预览
-1. 🔲 创建 JSON 预览组件
-2. 🔲 实现密码加密显示
-3. 🔲 实现实时同步
+1. ✅ 创建 JSON 预览组件（Monaco Editor）
+2. ✅ 实现密码加密显示（user/password 显示 ***）
+3. ✅ 实现实时同步（watchEffect 监听配置变化）
 
 ### Phase 3: 高级功能
 1. 🔲 添加 Transform 支持
-2. 🔲 完善表单验证
+2. 🔲 完善表单验证（必填项校验 + 自定义规则）
 3. 🔲 添加连接器模板
 
 ### Phase 4: 优化与测试
 1. 🔲 性能优化
-2. 🔲 用户体验优化
+2. ✅ 用户体验优化（两栏布局 + 无动画 + 响应式 flex）
 3. 🔲 端到端测试
 
 ## 8. 注意事项
@@ -465,7 +503,10 @@ getDatasourceTableColumnsById(datasourceId, database, tableName)
 
 ---
 
-**文档版本**: v1.0  
+**文档版本**: v1.1  
 **创建时间**: 2025-10-13  
-**最后更新**: 2025-10-13
+**最后更新**: 2025-10-14  
+**变更记录**:
+- v1.1 (2025-10-14): 简化 Source 配置，移除不必要的选项，更新实施进度
+- v1.0 (2025-10-13): 初始版本
 
