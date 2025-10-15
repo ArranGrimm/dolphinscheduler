@@ -137,6 +137,7 @@
 ## 7. 后续行动
 
 - [ ] 在前端实现 `query` 与 `database/table` 的互斥逻辑，并提供提示文案（特别是 Oracle 性能建议）。
+- [ ] 新增 Oracle/PG 高级选项分组组件，根据当前梳理的文档进行实现。
 - [ ] 新增 Doris 高级选项分组组件，至少支持导入格式、2PC 相关输入。
 - [ ] 根据本梳理更新 `project-plan.md` 中 Frontend Phase 的细化任务。
 - [ ] 与后端确认新增参数的传输格式，尤其是 `doris.config`（Key-Value）、`schema_save_mode` 等字段是否需要额外处理。
