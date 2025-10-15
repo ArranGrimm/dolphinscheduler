@@ -31,7 +31,9 @@ import {
   NIcon,
   NText,
   NElement,
-  NSelect
+  NSelect,
+  NSwitch,
+  NDynamicInput
 } from 'naive-ui'
 import { PlusCircleOutlined } from '@vicons/antd'
 import Monaco from '@/components/monaco-editor'
@@ -293,7 +295,13 @@ export default defineComponent({
         url: '',
         driver: '',
         user: '',
-        password: ''
+        password: '',
+        query: '',
+        generate_sink_sql: true,
+        primary_keys: [],
+        batch_size: 1000,
+        batch_interval_ms: 1000,
+        max_retries: 3
       } as SinkConnector)
     }
 
@@ -721,20 +729,120 @@ export default defineComponent({
                                     </NFormItem>
                                     {!isDoris && (
                                       <>
-                                        <NFormItem label='目标数据库'>
+                                        <NFormItem
+                                          label='目标数据库'
+                                          path={`sinks[${index}].database`}
+                                        >
                                           <NInput
                                             v-model:value={sink.database}
                                             placeholder='target_database'
-                                            disabled={props.readonly}
+                                            disabled={
+                                              props.readonly || !!sink.query
+                                            }
+                                            onUpdateValue={(value: string) => {
+                                              if (value) sink.query = ''
+                                            }}
                                           />
                                         </NFormItem>
-                                        <NFormItem label='目标表' required>
+                                        <NFormItem
+                                          label='目标表'
+                                          required
+                                          path={`sinks[${index}].table`}
+                                        >
                                           <NInput
                                             v-model:value={sink.table}
                                             placeholder='target_table'
-                                            disabled={props.readonly}
+                                            disabled={
+                                              props.readonly || !!sink.query
+                                            }
+                                            onUpdateValue={(value: string) => {
+                                              if (value) sink.query = ''
+                                            }}
                                           />
                                         </NFormItem>
+                                        <NFormItem
+                                          label='自定义写入 SQL'
+                                          path={`sinks[${index}].query`}
+                                        >
+                                          <NInput
+                                            v-model:value={sink.query}
+                                            type='textarea'
+                                            placeholder='INSERT INTO target_table (col1, col2) VALUES (?, ?)'
+                                            rows={4}
+                                            disabled={
+                                              props.readonly ||
+                                              !!sink.database ||
+                                              !!sink.table
+                                            }
+                                            onUpdateValue={(value: string) => {
+                                              if (value) {
+                                                sink.database = ''
+                                                sink.table = ''
+                                              }
+                                            }}
+                                          />
+                                          {sink.datasourceType === 'ORACLE' && (
+                                            <NText
+                                              depth='3'
+                                              class={styles['field-tip']}
+                                            >
+                                              提示：对于 Oracle
+                                              数据同步，使用自定义 SQL
+                                              通常能获得比自动生成更好的写入性能。
+                                            </NText>
+                                          )}
+                                        </NFormItem>
+                                        <NCollapse>
+                                          <NCollapseItem
+                                            title='高级选项'
+                                            name={`sink-advanced-${index}`}
+                                          >
+                                            <NSpace vertical>
+                                              <NFormItem label='生成 Sink SQL'>
+                                                <NSwitch
+                                                  v-model:value={
+                                                    sink.generate_sink_sql
+                                                  }
+                                                />
+                                              </NFormItem>
+                                              <NFormItem label='主键'>
+                                                <NDynamicInput
+                                                  v-model:value={
+                                                    sink.primary_keys
+                                                  }
+                                                  placeholder='输入主键字段名'
+                                                />
+                                              </NFormItem>
+                                              <NFormItem label='批次大小'>
+                                                <NInputNumber
+                                                  v-model:value={
+                                                    sink.batch_size
+                                                  }
+                                                  min={1}
+                                                  style={{ width: '100%' }}
+                                                />
+                                              </NFormItem>
+                                              <NFormItem label='批次间隔 (ms)'>
+                                                <NInputNumber
+                                                  v-model:value={
+                                                    sink.batch_interval_ms
+                                                  }
+                                                  min={1}
+                                                  style={{ width: '100%' }}
+                                                />
+                                              </NFormItem>
+                                              <NFormItem label='最大重试次数'>
+                                                <NInputNumber
+                                                  v-model:value={
+                                                    sink.max_retries
+                                                  }
+                                                  min={0}
+                                                  style={{ width: '100%' }}
+                                                />
+                                              </NFormItem>
+                                            </NSpace>
+                                          </NCollapseItem>
+                                        </NCollapse>
                                       </>
                                     )}
                                     {isDoris && (
@@ -767,6 +875,43 @@ export default defineComponent({
                                             disabled={props.readonly}
                                           />
                                         </NFormItem>
+                                        <NCollapse>
+                                          <NCollapseItem
+                                            title='高级选项'
+                                            name={`sink-advanced-doris-${index}`}
+                                          >
+                                            <NSpace vertical>
+                                              <NFormItem label='开启 2PC'>
+                                                <NSwitch
+                                                  v-model:value={
+                                                    dorisSink['sink.enable-2pc']
+                                                  }
+                                                />
+                                              </NFormItem>
+                                              <NFormItem label='Label 前缀'>
+                                                <NInput
+                                                  v-model:value={
+                                                    dorisSink[
+                                                      'sink.label-prefix'
+                                                    ]
+                                                  }
+                                                  placeholder='_my_prefix'
+                                                />
+                                              </NFormItem>
+                                              <NFormItem label='最大重试次数'>
+                                                <NInputNumber
+                                                  v-model:value={
+                                                    dorisSink[
+                                                      'sink.max-retries'
+                                                    ]
+                                                  }
+                                                  min={0}
+                                                  style={{ width: '100%' }}
+                                                />
+                                              </NFormItem>
+                                            </NSpace>
+                                          </NCollapseItem>
+                                        </NCollapse>
                                       </>
                                     )}
                                     <NButton

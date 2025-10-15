@@ -77,8 +77,10 @@ export interface SinkConnectorBase {
 export interface SinkJdbcConnector extends SinkConnectorBase {
   plugin_name: 'Jdbc'
   datasourceType: 'POSTGRESQL' | 'ORACLE'
+  query?: string // 自定义写入 SQL
   primary_keys?: string[]
   generate_sink_sql?: boolean
+  max_retries?: number
 }
 
 // Sink Doris 配置
@@ -87,6 +89,9 @@ export interface SinkDorisConnector extends SinkConnectorBase {
   datasourceType: 'DORIS'
   fenodes?: string // 从 DS 数据源 URL 解析并转换端口
   username?: string
+  'sink.label-prefix'?: string
+  'sink.enable-2pc'?: boolean
+  'sink.max-retries'?: number
 }
 
 // Sink 高级选项

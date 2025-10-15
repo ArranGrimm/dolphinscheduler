@@ -54,6 +54,8 @@ public class SeaTunnelRestTask extends AbstractRemoteTask {
     private final TaskExecutionContext taskExecutionContext;
     private SeaTunnelRestParameters seaTunnelRestParameters;
     private String seaTunnelJobId;
+    private CloseableHttpClient httpClient;
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     protected SeaTunnelRestTask(TaskExecutionContext taskExecutionContext) {
         super(taskExecutionContext);
@@ -67,6 +69,7 @@ public class SeaTunnelRestTask extends AbstractRemoteTask {
         if (this.seaTunnelRestParameters == null || !this.seaTunnelRestParameters.checkParameters()) {
             throw new SeaTunnelRestTaskException("SeaTunnel REST task params is not valid");
         }
+        this.httpClient = createHttpClient();
         log.info("Initialize SeaTunnel REST task params: {}", JSONUtils.toPrettyJsonString(seaTunnelRestParameters));
     }
 
@@ -120,7 +123,7 @@ public class SeaTunnelRestTask extends AbstractRemoteTask {
         log.info("Submitting SeaTunnel job to: {}", submitUrl);
         log.info("Job config: {}", jobConfigJson);
 
-        try (CloseableHttpClient httpClient = createHttpClient()) {
+        try {
             HttpPost httpPost = new HttpPost(submitUrl);
             httpPost.setHeader("Content-Type", "application/json");
 
@@ -139,9 +142,8 @@ public class SeaTunnelRestTask extends AbstractRemoteTask {
                 }
 
                 // Parse jobId from response
-                ObjectMapper mapper = new ObjectMapper();
-                JsonNode jsonNode = mapper.readTree(responseBody);
-                String jobId = jsonNode.get("jobId").asText();
+                JsonNode jsonNode = MAPPER.readTree(responseBody);
+                String jobId = jsonNode.path("jobId").asText();
 
                 if (StringUtils.isEmpty(jobId)) {
                     throw new SeaTunnelRestTaskException("JobId not found in submit response: " + responseBody);
@@ -149,6 +151,8 @@ public class SeaTunnelRestTask extends AbstractRemoteTask {
 
                 return jobId;
             }
+        } finally {
+            // No need to close httpClient here as it's managed by the class
         }
     }
 
@@ -197,9 +201,17 @@ public class SeaTunnelRestTask extends AbstractRemoteTask {
                 "/job-info/" + seaTunnelJobId;
 
         int pollInterval = seaTunnelRestParameters.getPollInterval();
+        long startTime = System.currentTimeMillis();
+        long maxRuntimeMillis = 3 * 24 * 60 * 60 * 1000; // 3 days
+        int failureCount = 0;
+        int maxFailures = 10;
 
         while (true) {
-            try (CloseableHttpClient httpClient = createHttpClient()) {
+            if (System.currentTimeMillis() - startTime > maxRuntimeMillis) {
+                throw new SeaTunnelRestTaskException("Task exceeded maximum runtime of 3 days");
+            }
+
+            try {
                 HttpGet httpGet = new HttpGet(jobInfoUrl);
 
                 try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
@@ -208,21 +220,33 @@ public class SeaTunnelRestTask extends AbstractRemoteTask {
 
                     if (statusCode != HttpStatus.SC_OK) {
                         log.warn("Query job status failed with status {}: {}", statusCode, responseBody);
+                        failureCount++;
+                        if (failureCount > maxFailures) {
+                            throw new SeaTunnelRestTaskException(
+                                    "Query job status failed for " + maxFailures + " consecutive times");
+                        }
                         Thread.sleep(pollInterval);
                         continue;
                     }
 
-                    // Parse job status
-                    ObjectMapper mapper = new ObjectMapper();
-                    JsonNode jsonNode = mapper.readTree(responseBody);
+                    // Reset failure count on success
+                    failureCount = 0;
 
-                    if (jsonNode.has("jobId") && jsonNode.get("jobId").asText().isEmpty()) {
+                    // Parse job status
+                    JsonNode jsonNode = MAPPER.readTree(responseBody);
+
+                    if (jsonNode.path("jobId").asText().isEmpty()) {
                         log.warn("Job {} not found, may not be started yet", seaTunnelJobId);
                         Thread.sleep(pollInterval);
                         continue;
                     }
 
-                    String jobStatus = jsonNode.get("jobStatus").asText();
+                    String jobStatus = jsonNode.path("jobStatus").asText();
+                    if (StringUtils.isEmpty(jobStatus)) {
+                        log.warn("Job status is empty in response: {}", responseBody);
+                        Thread.sleep(pollInterval);
+                        continue;
+                    }
                     log.info("SeaTunnel job {} status: {}", seaTunnelJobId, jobStatus);
 
                     // Log metrics if available
@@ -232,20 +256,28 @@ public class SeaTunnelRestTask extends AbstractRemoteTask {
                     }
 
                     // Check if job finished
-                    if ("FINISHED".equalsIgnoreCase(jobStatus)) {
-                        setExitStatusCode(TaskConstants.EXIT_CODE_SUCCESS);
-                        log.info("SeaTunnel job {} finished successfully", seaTunnelJobId);
-                        break;
-                    } else if ("FAILED".equalsIgnoreCase(jobStatus)) {
-                        setExitStatusCode(TaskConstants.EXIT_CODE_FAILURE);
-                        String errorMsg =
-                                jsonNode.has("errorMsg") ? jsonNode.get("errorMsg").asText() : "Unknown error";
-                        log.error("SeaTunnel job {} failed: {}", seaTunnelJobId, errorMsg);
-                        throw new SeaTunnelRestTaskException("SeaTunnel job failed: " + errorMsg);
-                    } else if ("CANCELED".equalsIgnoreCase(jobStatus) || "CANCELLED".equalsIgnoreCase(jobStatus)) {
-                        setExitStatusCode(TaskConstants.EXIT_CODE_KILL);
-                        log.warn("SeaTunnel job {} was cancelled", seaTunnelJobId);
-                        break;
+                    SeaTunnelJobStatus jobStatusEnum = SeaTunnelJobStatus.of(jobStatus);
+                    switch (jobStatusEnum) {
+                        case FINISHED:
+                            setExitStatusCode(TaskConstants.EXIT_CODE_SUCCESS);
+                            log.info("SeaTunnel job {} finished successfully", seaTunnelJobId);
+                            return; // Exit loop
+                        case FAILED:
+                            setExitStatusCode(TaskConstants.EXIT_CODE_FAILURE);
+                            String errorMsg = jsonNode.path("errorMsg").asText("Unknown error");
+                            log.error("SeaTunnel job {} failed: {}", seaTunnelJobId, errorMsg);
+                            throw new SeaTunnelRestTaskException("SeaTunnel job failed: " + errorMsg);
+                        case CANCELED:
+                        case CANCELLED:
+                            setExitStatusCode(TaskConstants.EXIT_CODE_KILL);
+                            log.warn("SeaTunnel job {} was cancelled", seaTunnelJobId);
+                            return; // Exit loop
+                        case RUNNING:
+                            // Continue polling
+                            break;
+                        default:
+                            log.warn("Unknown job status: {}", jobStatus);
+                            break;
                     }
 
                     // Sleep before next poll
@@ -291,7 +323,7 @@ public class SeaTunnelRestTask extends AbstractRemoteTask {
 
         log.info("Trying to cancel SeaTunnel job: {}", seaTunnelJobId);
 
-        try (CloseableHttpClient httpClient = createHttpClient()) {
+        try {
             HttpPost httpPost = new HttpPost(stopJobUrl);
             httpPost.setHeader("Content-Type", "application/json");
 
