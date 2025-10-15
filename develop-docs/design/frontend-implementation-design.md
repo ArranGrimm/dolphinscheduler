@@ -159,23 +159,33 @@ interface TransformConfig {
 
 #### Sink 配置（动态多连接器）
 ```typescript
-interface SinkConfig {
-  plugin_name: 'Jdbc' | 'Doris'
-  datasourceId: number
-  datasourceType: 'POSTGRESQL' | 'ORACLE' | 'DORIS'
-  
-  // Jdbc 特有
-  database?: string
-  table?: string
-  primary_keys?: string[] // CDC 场景
-  
-  // Doris 特有
-  fenodes?: string // 自动从数据源配置中提取
-  username?: string
-  password?: string
-  
-  plugin_input: string // 关联 source/transform 的 plugin_output
-}
+type SinkConfig =
+  | {
+      plugin_name: 'Jdbc'
+      datasourceId: number
+      datasourceType: 'POSTGRESQL' | 'ORACLE'
+      plugin_input: string
+      url?: string
+      driver?: string
+      user?: string
+      password?: string
+      database?: string
+      table?: string
+      primary_keys?: string[]
+      generate_sink_sql?: boolean
+    }
+  | {
+      plugin_name: 'Doris'
+      datasourceId: number
+      datasourceType: 'DORIS'
+      plugin_input: string
+      url?: string
+      fenodes?: string
+      database?: string
+      table?: string
+      username?: string
+      password?: string
+    }
 ```
 
 ### 4.3 高级配置 Tab
@@ -423,9 +433,9 @@ dolphinscheduler-ui/src/views/projects/task/components/node/
 - ✅ 实时同步配置（`watchEffect` 监听模型变化）
 
 ### Phase 3: 高级功能
-- ⏳ Sink 连接器动态选择（POSTGRESQL / ORACLE / DORIS）
-- ⏳ Transform 支持（SQL 编辑 + 输入输出关联）
-- ⏳ 完善表单验证（校验规则与提示）
+- ✅ Sink 连接器动态选择（PostgreSQL / Oracle / Doris）
+- ✅ Transform 支持（Sql 编辑 + 输入输出关联）
+- ✅ 表单核心校验（Source/Sink/Transform 必填检查）
 
 ### Phase 4: 优化与测试
 - ✅ 用户体验优化（自适应布局、移除动画、Flex 溢出修复）
@@ -507,15 +517,16 @@ getDatasourceTableColumnsById(datasourceId, database, tableName)
 |------|------|------|
 | Phase 1 | 基础增强：Tabs、Source 简化、数据源集成 | ✅ 已完成 |
 | Phase 2 | JSON 预览：Monaco + 密码掩码 + 实时同步 | ✅ 已完成 |
-| Phase 3 | 高级功能：Sink（JDBC + Doris）、Transform、校验 | ⏳ 进行中 |
+| Phase 3 | 高级功能：Sink（JDBC + Doris）、Transform、校验 | ✅ 已完成 |
 | Phase 4 | 优化与测试：体验优化、性能、端到端测试 | 部分完成（体验 ✅，其他待定） |
 
 ---
 
-**文档版本**: v1.1  
+**文档版本**: v1.2  
 **创建时间**: 2025-10-13  
-**最后更新**: 2025-10-14  
+**最后更新**: 2025-10-15  
 **变更记录**:
+- v1.2 (2025-10-15): Sink/Transform 支持落地，校验与 JSON 生成更新
 - v1.1 (2025-10-14): 简化 Source 配置，更新文件结构与实施进度
 - v1.0 (2025-10-13): 初始版本
 

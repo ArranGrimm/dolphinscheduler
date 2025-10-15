@@ -58,7 +58,7 @@
 - `ui-setting` 路由重名冲突
 - 创建 `.env.development` 配置
 
-### 🔄 阶段四：前端高级表单与交互（进行中 - 2025-10-14）
+### 🔄 阶段四：前端高级表单与交互（进行中 - 2025-10-15）
 
 **核心成果**:
 - ✅ 创建自定义表单组件（task-forms/seatunnel-rest/）
@@ -79,10 +79,20 @@
 - ✅ 保留 SQL 查询（核心功能）
 - 📝 "输出表名" 改为 "Plugin Output"
 
+**新增成果（2025-10-15）**:
+- ✅ Sink 连接器动态选择（PostgreSQL / Oracle / Doris）
+  - Doris fenodes 自动从 JDBC URL 转换 9030 → 8030
+  - 自动映射数据源账号信息并在 JSON 预览中脱敏
+- ✅ Transform 模块（Sql）
+  - 输入/输出插件自动联动
+  - 支持多条 Transform 串联
+- ✅ 表单核心校验
+  - Source/Sink/Transform 必填校验
+  - JSON 生成逻辑同步敏感信息掩码
+
 **待完成**:
-- ⏳ Sink 连接器动态选择（POSTGRESQL + ORACLE + DORIS）
-- ⏳ Transform 支持
-- ⏳ 完善表单验证
+- ⏳ 高级选项面板细化（Source/Sink 高级参数）
+- ⏳ 校验规则扩展（URL 格式、字段去重、上下游引用检测）
 
 ---
 
@@ -96,40 +106,28 @@
 - SQL 查询输入
 - Plugin Output 配置
 
-#### 2. ⏳ Sink 连接器（进行中）
-**目标**: 支持 POSTGRESQL + ORACLE + DORIS 三种数据源
+#### 2. ✅ Sink 连接器（已完成 2025-10-15）
+**覆盖范围**: PostgreSQL / Oracle / Doris
 
-**JDBC Sink（PostgreSQL + Oracle）**:
-- 数据源选择
-- 自动提取连接信息
-- 表名配置
-- Primary Keys（CDC 场景）
-- Plugin Input 关联
+**关键能力**:
+- 自动加载三类数据源并回填 JDBC 连接信息
+- Doris fenodes 自动换算 HTTP 端口 8030
+- Plugin Input 与 Source/Transform 输出联动
+- JSON 预览同步展示 sink 详情（敏感字段脱敏）
 
-**Doris Sink**:
-- 特殊处理：从 DS 数据源 JDBC URL 提取 fenodes
-- 端口转换：9030 → 8030（Stream Load HTTP 端口）
-- 数据库/表配置
-- 用户名/密码
-- Plugin Input 关联
+#### 3. ✅ Transform 支持（已完成 2025-10-15）
+- 支持多条 Sql Transform 串联
+- 插件输入快速选择上游输出
+- 查询编辑框统一使用多行 SQL 输入
 
-**实现参考**:
-```typescript
-// Doris 端口转换逻辑
-const jdbcUrl = "jdbc:mysql://192.168.1.100:9030/test"
-const parsedUrl = parseJdbcUrl(jdbcUrl)
-const fenodes = `${parsedUrl.host}:8030`  // 9030 → 8030
-```
+#### 4. ✅ 表单校验第一阶段（已完成 2025-10-15）
+- Source/Sink/Transform 必填字段校验
+- 数据源选择、Plugin Input/Output 指定检查
+- JSON 生成校验逻辑同步更新
 
-#### 3. ⏳ Transform 支持
-- SQL Transform 配置
-- Plugin Input/Output 关联
-- SQL 编辑器（Monaco）
-
-#### 4. ⏳ 完善表单验证
-- 必填项校验
-- 自定义规则（URL 格式、Plugin Input/Output 关联）
-- 友好错误提示
+#### 5. ⏳ 表单高级选项与深度校验（持续中）
+- Source/Sink 高级参数折叠区（并行、批量、Upsert 等）
+- URL/SQL 合法性、Plugin Output 重名校验、引用闭环检查
 
 ---
 
@@ -335,8 +333,8 @@ if (StringUtils.isEmpty(jobStatus)) {
 | 前端最小可用配置 | 2025-10-13 | ✅ 完成 |
 | 端到端联调成功 | 2025-10-13 | ✅ 完成 |
 | Source 连接器（简化版） | 2025-10-14 | ✅ 完成 |
-| Sink 连接器 | TBD | ⏳ 进行中 |
-| Transform 支持 | TBD | 📋 待启动 |
+| Sink 连接器 | 2025-10-15 | ✅ 完成 |
+| Transform 支持 | 2025-10-15 | ✅ 完成 |
 | 后端优化 | TBD | 📋 待启动 |
 | 完整测试 | TBD | 📋 待启动 |
 | 文档交付 | TBD | 📋 待启动 |
