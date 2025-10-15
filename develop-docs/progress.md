@@ -57,6 +57,7 @@
 - Sink 连接器支持 PostgreSQL/Oracle/Doris，Doris fenodes 自动转换
 - Transform 配置支持多步 SQL 串联，Plugin Input 自动联动
 - JSON 生成与校验逻辑同步更新，敏感信息掩码覆盖 Sink 字段
+- SeaTunnel 自定义表单补齐 `setValues/getValues/validate`，弹窗可正常初始化与提交
 
 ### 2025-10-14
 - 自定义表单迁移至 `task-forms/seatunnel-rest/`

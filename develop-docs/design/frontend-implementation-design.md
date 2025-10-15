@@ -288,6 +288,13 @@ const onSourceDatasourceChange = async (
 
 **UI 表单结构**：
 ```
+
+#### 表单与弹窗的交互契约
+
+- DolphinScheduler 原生弹窗会在初始化时调用 `setValues(model)`，在提交前调用 `getValues()`，并执行 `validate()`。
+- 自定义表单必须实现并通过 `expose({ validate, setValues, getValues })` 暴露这三个方法，才能与原生流程保持一致。
+- `setValues` 负责写入基础配置与 `jobConfig` 中的 Source/Transform/Sink 列表；`getValues` 则返回带有最新 `jobConfig` 的 `INodeData`（使用最终 JSON 字符串）。
+- 在 `detail.tsx` 中通过 `ref={setFormInstance}` 将自定义表单实例存入 `formRef`，避免影响原生 `Form` 组件的行为。
 ┌──────────────────────────────────────┐
 │ Source #1                      [删除] │
 ├──────────────────────────────────────┤
