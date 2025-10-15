@@ -33,7 +33,7 @@ export interface EnvConfig {
 // Source 连接器配置（简化版）
 export interface SourceConnector {
   plugin_name: 'Jdbc'
-  datasourceId: number
+  datasourceId: number | null
   datasourceType: DatasourceType // 从数据源自动推断
   query: string // SQL 查询
   plugin_output: string // 输出表名
@@ -62,7 +62,7 @@ export interface TransformConnector {
 
 // Sink 连接器基础配置
 export interface SinkConnectorBase {
-  datasourceId: number
+  datasourceId: number | null
   datasourceType: DatasourceType
   plugin_input: string
   url?: string

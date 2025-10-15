@@ -15,10 +15,7 @@
  * limitations under the License.
  */
 
-import type {
-  ParsedJdbcUrl,
-  SeaTunnelConfigModel
-} from './types'
+import type { ParsedJdbcUrl, SeaTunnelConfigModel } from './types'
 
 /**
  * 解析 JDBC URL
@@ -184,7 +181,8 @@ export function generateSeaTunnelConfig(
 
       if (s.batch_size) sink.batch_size = s.batch_size
       if (s.batch_interval_ms) sink.batch_interval_ms = s.batch_interval_ms
-      if (s.is_exactly_once !== undefined) sink.is_exactly_once = s.is_exactly_once
+      if (s.is_exactly_once !== undefined)
+        sink.is_exactly_once = s.is_exactly_once
       if (s.enable_upsert !== undefined) sink.enable_upsert = s.enable_upsert
       if (s.schema_save_mode) sink.schema_save_mode = s.schema_save_mode
       if (s.data_save_mode) sink.data_save_mode = s.data_save_mode
@@ -238,7 +236,7 @@ export function validateConfig(model: SeaTunnelConfigModel): {
 
   // 检查 Source 配置完整性（简化版）
   model.sources?.forEach((source, index) => {
-    if (!source.datasourceId || source.datasourceId === 0) {
+    if (source.datasourceId === null || source.datasourceId === undefined) {
       errors.push(`Source ${index + 1}: 必须选择数据源`)
     }
     if (!source.query || source.query.trim() === '') {
@@ -255,7 +253,7 @@ export function validateConfig(model: SeaTunnelConfigModel): {
       errors.push(`Sink ${index + 1}: 缺少输入 Plugin`)
     }
 
-    if (!sink.datasourceId || sink.datasourceId === 0) {
+    if (sink.datasourceId === null || sink.datasourceId === undefined) {
       errors.push(`Sink ${index + 1}: 必须选择数据源`)
     }
 

@@ -47,7 +47,8 @@ import {
   generateJsonPreview,
   validateConfig,
   convertDorisPort,
-  extractJdbcUrl
+  extractJdbcUrl,
+  generateFinalJson
 } from './utils'
 import styles from './index.module.scss'
 import {
@@ -211,23 +212,13 @@ export default defineComponent({
       loadSourceDatasources()
       loadSinkDatasources()
 
-      if (props.model.jobConfig) {
-        try {
-          const config = JSON.parse(props.model.jobConfig)
-          if (config.env) configModel.env = config.env
-          if (config.source) configModel.sources = config.source
-          if (config.transform) configModel.transforms = config.transform
-          if (config.sink) configModel.sinks = config.sink
-        } catch (unusedError) {
-          // Invalid JSON, use default config
-        }
-      }
+      setValues(props.model)
     })
 
     const addSource = () => {
       configModel.sources.push({
         plugin_name: 'Jdbc',
-        datasourceId: 0,
+        datasourceId: null,
         datasourceType: 'POSTGRESQL',
         query: '',
         plugin_output: `source_${configModel.sources.length + 1}`
@@ -294,7 +285,7 @@ export default defineComponent({
       const defaultInput = pluginOutputOptions.value[0]?.value || ''
       configModel.sinks.push({
         plugin_name: 'Jdbc',
-        datasourceId: 0,
+        datasourceId: null,
         datasourceType: 'POSTGRESQL',
         plugin_input: defaultInput,
         database: '',
@@ -316,6 +307,7 @@ export default defineComponent({
       if (!selectedDs) {
         sink.datasourceType = 'POSTGRESQL'
         sink.plugin_name = 'Jdbc'
+        sink.datasourceId = null
         return
       }
 
@@ -408,15 +400,60 @@ export default defineComponent({
       { deep: true, immediate: true }
     )
 
+    const assignArray = <T extends Record<string, any>>(
+      target: T[],
+      source: T[]
+    ) => {
+      target.splice(0, target.length, ...source.map((item) => ({ ...item })))
+    }
+
+    const setValues = (model: INodeData) => {
+      configModel.restEndpoint = model.restEndpoint || ''
+      configModel.connectTimeout = model.connectTimeout || 60000
+      configModel.socketTimeout = model.socketTimeout || 60000
+      configModel.pollInterval = model.pollInterval || 10000
+
+      if (model.jobConfig) {
+        try {
+          const parsed = JSON.parse(model.jobConfig)
+          configModel.env = parsed.env || { 'job.mode': 'BATCH' }
+          assignArray(configModel.sources, parsed.source || [])
+          assignArray(configModel.transforms, parsed.transform || [])
+          assignArray(configModel.sinks, parsed.sink || [])
+        } catch (unusedError) {
+          assignArray(configModel.sources, [])
+          assignArray(configModel.transforms, [])
+          assignArray(configModel.sinks, [])
+        }
+      } else {
+        assignArray(configModel.sources, [])
+        assignArray(configModel.transforms, [])
+        assignArray(configModel.sinks, [])
+        configModel.env = { 'job.mode': 'BATCH' }
+      }
+    }
+
+    const getValues = () => {
+      const finalJson = generateFinalJson(configModel)
+      return {
+        ...props.model,
+        restEndpoint: configModel.restEndpoint,
+        connectTimeout: configModel.connectTimeout,
+        socketTimeout: configModel.socketTimeout,
+        pollInterval: configModel.pollInterval,
+        jobConfig: finalJson
+      }
+    }
+
     const validate = async () => {
       const result = validateConfig(configModel)
       if (!result.valid) {
-        return false
+        return result
       }
-      return true
+      return { valid: true, errors: [] }
     }
 
-    expose({ validate })
+    expose({ validate, setValues, getValues })
 
     return () => (
       <NElement tag='div' class={styles['seatunnel-rest-form']}>

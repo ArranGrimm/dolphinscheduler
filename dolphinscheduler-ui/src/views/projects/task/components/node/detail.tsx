@@ -65,12 +65,16 @@ const NodeDetail = defineComponent({
 
     expose(formRef)
 
+    const setFormInstance = (instance: any) => {
+      formRef.value = instance
+    }
+
     return () => {
       // 如果是 SEATUNNEL_REST 任务类型，使用自定义表单
       if (model.taskType === 'SEATUNNEL_REST') {
         return (
           <SeaTunnelRestForm
-            ref={formRef}
+            ref={setFormInstance}
             model={model}
             readonly={unref(readonly)}
           />
