@@ -78,7 +78,7 @@
 | `enable_upsert` | true | CDC 场景保持默认即可 |
 | `schema_save_mode` / `data_save_mode` | CREATE / APPEND | 与表结构/数据存在关系 |
 
-> **保留策略**：为了保持界面简洁，建议基础面板仅保留 `database`、`table`、`query`、`generate_sink_sql`；其余选项置于高级面板，并在初期隐藏 `is_exactly_once` 等极少使用的参数。
+> **保留策略**：为了保持界面简洁，建议基础面板仅保留 `database`、`table`、`query`；其余选项置于高级面板。根据团队反馈，`is_exactly_once`、`schema_save_mode`、`custom_sql` 等选项因复杂度高或职责不清，**不在 UI 中提供**，但保留 `enable_upsert` 和 `data_save_mode` 以支持性能调优和数据覆盖策略。
 
 ### 4.3 Oracle 特殊说明
 
@@ -136,11 +136,11 @@
 
 ## 7. 后续行动
 
-- [ ] 在前端实现 `query` 与 `database/table` 的互斥逻辑，并提供提示文案（特别是 Oracle 性能建议）。
-- [ ] 新增 Oracle/PG 高级选项分组组件，根据当前梳理的文档进行实现。
-- [ ] 新增 Doris 高级选项分组组件，至少支持导入格式、2PC 相关输入。
-- [ ] 根据本梳理更新 `project-plan.md` 中 Frontend Phase 的细化任务。
-- [ ] 与后端确认新增参数的传输格式，尤其是 `doris.config`（Key-Value）、`schema_save_mode` 等字段是否需要额外处理。
+- [x] 在前端实现 `query` 与 `database/table` 的互斥逻辑，并提供提示文案（特别是 Oracle 性能建议）。
+- [x] 新增 Oracle/PG 高级选项分组组件，实现 `enable_upsert` 和 `data_save_mode` 选项。
+- [x] 新增 Doris 高级选项分组组件，支持导入格式、2PC 相关输入。
+- [x] 根据本梳理更新 `project-plan.md` 中 Frontend Phase 的细化任务。
+- [ ] 与后端确认新增参数的传输格式，尤其是 `doris.config`（Key-Value）等字段是否需要额外处理。
 
 ---
 

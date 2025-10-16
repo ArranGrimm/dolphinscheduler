@@ -81,6 +81,12 @@ export interface SinkJdbcConnector extends SinkConnectorBase {
   primary_keys?: string[]
   generate_sink_sql?: boolean
   max_retries?: number
+  enable_upsert?: boolean
+  data_save_mode?:
+    | 'APPEND_DATA'
+    | 'DROP_DATA'
+    | 'CUSTOM_PROCESSING'
+    | 'ERROR_WHEN_DATA_EXISTS'
 }
 
 // Sink Doris 配置

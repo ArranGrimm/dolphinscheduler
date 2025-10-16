@@ -79,20 +79,23 @@
 - ✅ 保留 SQL 查询（核心功能）
 - 📝 "输出表名" 改为 "Plugin Output"
 
-**新增成果（2025-10-15）**:
-- ✅ Sink 连接器动态选择（PostgreSQL / Oracle / Doris）
-  - Doris fenodes 自动从 JDBC URL 转换 9030 → 8030
-  - 自动映射数据源账号信息并在 JSON 预览中脱敏
-- ✅ Transform 模块（Sql）
-  - 输入/输出插件自动联动
-  - 支持多条 Transform 串联
-- ✅ 表单核心校验
-  - Source/Sink/Transform 必填校验
-  - JSON 生成逻辑同步敏感信息掩码
+**新增成果（2025-10-16）**:
+- ✅ Sink 连接器高级选项
+  - JDBC Sink: `query` 与 `database/table` 互斥逻辑，增加高级选项面板（`enable_upsert`, `data_save_mode` 等）
+  - Doris Sink: 增加高级选项面板（`sink.enable-2pc`, `sink.label-prefix` 等）
+  - 增加 Oracle Sink 性能提示
 
 **待完成**:
-- ⏳ 高级选项面板细化（Source/Sink 高级参数）
+- ⏳ Source 连接器高级参数
 - ⏳ 校验规则扩展（URL 格式、字段去重、上下游引用检测）
+
+### ✅ 阶段五：后端代码优化（已完成 - 2025-10-16）
+
+**核心成果**:
+- ✅ **性能优化**: 复用 `HttpClient` 和 `ObjectMapper`，避免在轮询中重复创建。
+- ✅ **健壮性增强**: 为轮询逻辑增加超时和连续失败次数限制。
+- ✅ **安全性增强**: 使用 `path()` 替代 `get()` 进行 JSON 解析，防止空指针。
+- ✅ **可维护性提升**: 使用 `Enum` 替代硬编码的任务状态字符串。
 
 ---
 
@@ -128,17 +131,18 @@
 #### 5. ✅ 表单高级选项（已完成 2025-10-15）
 - Sink 连接器（JDBC / Doris）高级参数折叠区
 - JDBC `query` 与 `table` 互斥逻辑实现
+- 新增 `enable_upsert` 和 `data_save_mode` 选项
 
 #### 6. ⏳ 深度校验（持续中）
 - URL/SQL 合法性、Plugin Output 重名校验、引用闭环检查
 
 ---
 
-### 🔧 Phase 2: 后端代码优化（高优先级）
+### ✅ Phase 2: 后端代码优化（已完成）
 
-根据 Code Review 建议，需要进行以下优化以提升生产级稳定性：
+根据 Code Review 建议，所有计划内的优化项均已完成。
 
-#### 1. ⏳ HTTP 客户端和 ObjectMapper 复用（性能优化）
+#### 1. ✅ HTTP 客户端和 ObjectMapper 复用
 
 **问题**: 
 - 在 `pollJobStatus()` 循环中反复创建 `CloseableHttpClient` 和 `ObjectMapper`
@@ -163,7 +167,7 @@ public class SeaTunnelRestTask extends AbstractRemoteTask {
 
 **影响文件**: `SeaTunnelRestTask.java`
 
-#### 2. ⏳ 轮询逻辑的健壮性增强
+#### 2. ✅ 轮询逻辑的健壮性增强
 
 **问题**:
 - `while(true)` 循环在某些边缘情况下可能永远无法退出
@@ -201,7 +205,7 @@ while (true) {
 
 **影响文件**: `SeaTunnelRestTask.java`
 
-#### 3. ⏳ 状态字符串硬编码问题（可维护性）
+#### 3. ✅ 状态字符串硬编码问题
 
 **问题**:
 - 直接使用 `"FINISHED"`, `"FAILED"`, `"CANCELED"` 等魔法字符串
@@ -239,7 +243,7 @@ switch (status) {
 
 **影响文件**: 新建 `SeaTunnelJobStatus.java` + 修改 `SeaTunnelRestTask.java`
 
-#### 4. ⏳ JSON 解析的空指针安全检查
+#### 4. ✅ JSON 解析的空指针安全检查
 
 **问题**:
 - `jsonNode.get("jobId")` 如果不存在会返回 `null`
@@ -264,7 +268,7 @@ if (StringUtils.isEmpty(jobStatus)) {
 
 ---
 
-### 🧪 Phase 3: 测试与验证（中优先级）
+### 🔧 Phase 3: 测试与验证（高优先级）
 
 #### 1. ⏳ 任务 Kill 功能端到端测试
 
@@ -338,7 +342,8 @@ if (StringUtils.isEmpty(jobStatus)) {
 | Source 连接器（简化版） | 2025-10-14 | ✅ 完成 |
 | Sink 连接器 | 2025-10-15 | ✅ 完成 |
 | Transform 支持 | 2025-10-15 | ✅ 完成 |
-| 后端优化 | TBD | 📋 待启动 |
+| 前端高级选项 | 2025-10-16 | ✅ 完成 |
+| 后端优化 | 2025-10-16 | ✅ 完成 |
 | 完整测试 | TBD | 📋 待启动 |
 | 文档交付 | TBD | 📋 待启动 |
 
@@ -400,14 +405,14 @@ if (StringUtils.isEmpty(jobStatus)) {
 
 ### 📅 近期计划（本月）
 
-4. **后端代码优化**
+4. **端到端测试**
+   - Kill 功能测试
+   - 边界条件测试
+
+5. **后端代码优化**
    - HttpClient 复用（高优先级）
    - JSON 解析安全检查（高优先级）
    - 轮询超时机制（中优先级）
-
-5. **端到端测试**
-   - Kill 功能测试
-   - 边界条件测试
 
 ### 🔜 后续计划
 
@@ -421,7 +426,7 @@ if (StringUtils.isEmpty(jobStatus)) {
 
 ---
 
-**文档版本**: v1.1  
+**文档版本**: v1.2  
 **创建时间**: 2025-10-14  
-**最后更新**: 2025-10-15
+**最后更新**: 2025-10-16
 

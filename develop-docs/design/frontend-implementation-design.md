@@ -173,6 +173,8 @@ type SinkConfig =
       table?: string
       primary_keys?: string[]
       generate_sink_sql?: boolean
+      enable_upsert?: boolean
+      data_save_mode?: 'APPEND_DATA' | 'DROP_DATA' | 'ERROR_WHEN_DATA_EXISTS'
     }
   | {
       plugin_name: 'Doris'
@@ -185,6 +187,8 @@ type SinkConfig =
       table?: string
       username?: string
       password?: string
+      'sink.enable-2pc'?: boolean
+      'sink.label-prefix'?: string
     }
 ```
 
@@ -215,11 +219,13 @@ type SinkConfig =
   batch_size?: number,
   batch_interval_ms?: number,
   
-  // CDC 设置
-  is_exactly_once?: boolean,
-  enable_upsert?: boolean,
-  schema_save_mode?: 'CREATE_SCHEMA_WHEN_NOT_EXIST' | 'RECREATE_SCHEMA' | ...,
-  data_save_mode?: 'APPEND_DATA' | 'DROP_DATA' | ...
+  // CDC 与数据写入策略
+  enable_upsert?: boolean, // default: true
+  data_save_mode?: 'APPEND_DATA' | 'DROP_DATA' | 'ERROR_WHEN_DATA_EXISTS', // default: APPEND_DATA
+
+  // Doris 专属
+  'sink.enable-2pc'?: boolean, // default: false
+  'sink.label-prefix'?: string
 }
 ```
 
@@ -525,14 +531,15 @@ getDatasourceTableColumnsById(datasourceId, database, tableName)
 | Phase 1 | 基础增强：Tabs、Source 简化、数据源集成 | ✅ 已完成 |
 | Phase 2 | JSON 预览：Monaco + 密码掩码 + 实时同步 | ✅ 已完成 |
 | Phase 3 | 高级功能：Sink（JDBC + Doris）、Transform、校验 | ✅ 已完成 |
-| Phase 4 | 优化与测试：体验优化、性能、端到端测试 | 部分完成（体验 ✅，其他待定） |
+| Phase 4 | 优化与测试：体验优化、性能、端到端测试 | 🚧 进行中（体验 ✅，测试 ⏳） |
 
 ---
 
-**文档版本**: v1.2  
+**文档版本**: v1.3  
 **创建时间**: 2025-10-13  
-**最后更新**: 2025-10-15  
+**最后更新**: 2025-10-16  
 **变更记录**:
+- v1.3 (2025-10-16): 根据最终实现，更新 Sink 连接器的高级选项定义。
 - v1.2 (2025-10-15): Sink/Transform 支持落地，校验与 JSON 生成更新
 - v1.1 (2025-10-14): 简化 Source 配置，更新文件结构与实施进度
 - v1.0 (2025-10-13): 初始版本

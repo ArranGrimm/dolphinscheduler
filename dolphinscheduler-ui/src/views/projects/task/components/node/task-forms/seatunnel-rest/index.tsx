@@ -301,7 +301,9 @@ export default defineComponent({
         primary_keys: [],
         batch_size: 1000,
         batch_interval_ms: 1000,
-        max_retries: 3
+        max_retries: 3,
+        enable_upsert: true,
+        data_save_mode: 'APPEND_DATA'
       } as SinkConnector)
     }
 
@@ -838,6 +840,39 @@ export default defineComponent({
                                                   }
                                                   min={0}
                                                   style={{ width: '100%' }}
+                                                />
+                                              </NFormItem>
+                                              <NFormItem label='开启 Upsert'>
+                                                <NSwitch
+                                                  v-model:value={
+                                                    sink.enable_upsert
+                                                  }
+                                                />
+                                              </NFormItem>
+                                              <NFormItem label='数据保存模式'>
+                                                <NSelect
+                                                  v-model:value={
+                                                    sink.data_save_mode
+                                                  }
+                                                  options={[
+                                                    {
+                                                      label:
+                                                        '追加数据 (APPEND_DATA)',
+                                                      value: 'APPEND_DATA'
+                                                    },
+                                                    {
+                                                      label:
+                                                        '清空数据 (DROP_DATA)',
+                                                      value: 'DROP_DATA'
+                                                    },
+                                                    {
+                                                      label:
+                                                        '数据存在时报错 (ERROR_WHEN_DATA_EXISTS)',
+                                                      value:
+                                                        'ERROR_WHEN_DATA_EXISTS'
+                                                    }
+                                                  ]}
+                                                  placeholder='选择数据保存模式'
                                                 />
                                               </NFormItem>
                                             </NSpace>
