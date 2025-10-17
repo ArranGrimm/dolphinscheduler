@@ -138,7 +138,20 @@
 
 ---
 
-### ✅ Phase 2: 后端代码优化（已完成）
+### 🔧 Phase 2: 重构与增强（高优先级）
+
+#### 1. ⏳ 数据源持久化重构 (高优先级)
+**问题**: 当前 `jobConfig` 在保存时丢失了 `datasourceId`，导致工作流导入/导出后，无法回显已选择的数据源，破坏了工作流的可移植性。
+**解决方案**:
+- **分离存储与提交**: 保存到 DS 的 `jobConfig` 必须包含 `datasourceId`；提交到 SeaTunnel 的配置则在任务运行时动态生成。
+- **重构加载逻辑**: 表单加载时，根据 `jobConfig` 中的 `datasourceId` 自动重新查询数据源详情并填充表单。
+
+#### 2. ⏳ Doris Sink 高级选项增强 (中优先级)
+**内容**: 根据 `Doris-sink.md` 文档，补充 `sink.buffer-size`, `doris.batch.size`, `doris.config` 等性能调优参数。
+
+---
+
+### ✅ Phase 3: 后端代码优化（已完成）
 
 根据 Code Review 建议，所有计划内的优化项均已完成。
 
@@ -268,7 +281,7 @@ if (StringUtils.isEmpty(jobStatus)) {
 
 ---
 
-### 🔧 Phase 3: 测试与验证（高优先级）
+### 🔧 Phase 4: 测试与验证（中优先级）
 
 #### 1. ⏳ 任务 Kill 功能端到端测试
 
@@ -287,7 +300,7 @@ if (StringUtils.isEmpty(jobStatus)) {
 
 ---
 
-### 📚 Phase 4: 文档与交付（低优先级）
+### 📚 Phase 5: 文档与交付（低优先级）
 
 #### 1. ⏳ 撰写部署与配置文档（面向运维人员）
 
@@ -426,7 +439,18 @@ if (StringUtils.isEmpty(jobStatus)) {
 
 ---
 
-**文档版本**: v1.2  
+### ✅ 已完成的技术决策
+
+- **选择 Zeppelin 作为参考模板**: 因其同样采用 REST API 交互且结构清晰。
+- **支持两种配置方式**: JSON 字符串（高级）与结构化配置（UI）。
+- **采用轮询而非 WebSocket**: 实现简单，符合 DS 插件惯例。
+- **使用 SeaTunnel REST API v2**: v1 已淘汰，v2 接口更简洁。
+- **简化 Source 连接器配置**: 基于使用反馈，只保留最核心的“数据源选择”和“SQL输入”。
+- **不在 UI 中提供部分高级选项**: `schema_save_mode`、`custom_sql`、`is_exactly_once` 等因职责不清或配置复杂，交由 DS 的 SQL 节点或 JSON 编辑模式处理。
+
+---
+
+**文档版本**: v1.3  
 **创建时间**: 2025-10-14  
 **最后更新**: 2025-10-16
 

@@ -189,6 +189,11 @@ type SinkConfig =
       password?: string
       'sink.enable-2pc'?: boolean
       'sink.label-prefix'?: string
+      // 性能调优参数 (待补充)
+      'sink.buffer-size'?: number
+      'sink.buffer-count'?: number
+      'doris.batch.size'?: number
+      'doris.config'?: Record<string, any>
     }
 ```
 
@@ -225,7 +230,13 @@ type SinkConfig =
 
   // Doris 专属
   'sink.enable-2pc'?: boolean, // default: false
-  'sink.label-prefix'?: string
+  'sink.label-prefix'?: string,
+
+  // Doris 性能调优 (待补充)
+  'sink.buffer-size'?: number,
+  'sink.buffer-count'?: number,
+  'doris.batch.size'?: number,
+  'doris.config'?: Record<string, any>
 }
 ```
 
@@ -317,7 +328,16 @@ const onSourceDatasourceChange = async (
 // Doris 需要特殊处理 fenodes 字段
 ```
 
-### 5.2 JSON 预览与密码加密
+### 5.2 数据源持久化与工作流导入/导出兼容性
+
+**问题**: 当前 `jobConfig` 在保存时丢失 `datasourceId`，导致工作流导入/导出后无法回显数据源。
+
+**解决方案 (设计优化)**:
+1. **修改存储逻辑 (`getValues`)**: 生成的 `jobConfig` JSON 中必须保留 `datasourceId`，同时移除 `password` 等衍生信息。
+2. **修改加载逻辑 (`setValues`)**: 表单初始化时，优先读取 `datasourceId`，并根据它重新触发数据源详情查询，填充表单。
+3. **分离“存储配置”与“提交配置”**: 确保用于持久化和用于运行时提交的配置分离，解决兼容性问题。
+
+### 5.3 JSON 预览与密码加密
 
 #### JSON 生成器
 ```typescript
@@ -385,7 +405,7 @@ export default defineComponent({
 })
 ```
 
-### 5.3 表单验证
+### 5.4 表单验证
 
 #### 验证规则
 ```typescript
@@ -535,10 +555,11 @@ getDatasourceTableColumnsById(datasourceId, database, tableName)
 
 ---
 
-**文档版本**: v1.3  
+**文档版本**: v1.4  
 **创建时间**: 2025-10-13  
 **最后更新**: 2025-10-16  
 **变更记录**:
+- v1.4 (2025-10-16): 补充 Doris 性能调优参数，增加数据源持久化设计方案。
 - v1.3 (2025-10-16): 根据最终实现，更新 Sink 连接器的高级选项定义。
 - v1.2 (2025-10-15): Sink/Transform 支持落地，校验与 JSON 生成更新
 - v1.1 (2025-10-14): 简化 Source 配置，更新文件结构与实施进度
