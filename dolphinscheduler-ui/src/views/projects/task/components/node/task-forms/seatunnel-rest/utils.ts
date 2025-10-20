@@ -15,7 +15,12 @@
  * limitations under the License.
  */
 
-import type { ParsedJdbcUrl, SeaTunnelConfigModel } from './types'
+import type {
+  ParsedJdbcUrl,
+  SeaTunnelConfigModel,
+  SourceConnector,
+  SinkConnector
+} from './types'
 
 /**
  * 解析 JDBC URL
@@ -91,9 +96,12 @@ export function convertDorisPort(jdbcUrl: string): string | null {
 }
 
 /**
- * 生成 SeaTunnel 配置 JSON
+ * 生成 SeaTunnel 配置 JSON（用于提交到 SeaTunnel 引擎）
+ * @param model 表单数据模型
+ * @param maskSensitive 是否脱敏密码等字段（用于UI预览）
+ * @returns 提交给 SeaTunnel 的配置对象
  */
-export function generateSeaTunnelConfig(
+export function generateSeaTunnelEngineConfig(
   model: SeaTunnelConfigModel,
   maskSensitive = false
 ): any {
@@ -122,6 +130,9 @@ export function generateSeaTunnelConfig(
       if (s.password) {
         source.password = maskSensitive ? '***' : s.password
       }
+
+      // 移除 datasourceId，因为它不是 SeaTunnel 引擎的配置项
+      delete source.datasourceId
 
       // 高级选项（可选）
       if (s.partition_column) source.partition_column = s.partition_column
@@ -164,6 +175,10 @@ export function generateSeaTunnelConfig(
       if (s.password) {
         sink.password = maskSensitive ? '***' : s.password
       }
+
+      // 移除 datasourceId
+      delete sink.datasourceId
+
       if (s.database) sink.database = s.database
       if (s.table) sink.table = s.table
 
@@ -195,18 +210,81 @@ export function generateSeaTunnelConfig(
 }
 
 /**
- * 生成格式化的 JSON 字符串（用于预览）
+ * 生成用于存储在 DolphinScheduler 数据库中的 jobConfig JSON
+ * @param model 表单数据模型
+ * @returns 存储用的配置对象，保留 datasourceId，移除衍生字段
  */
-export function generateJsonPreview(model: SeaTunnelConfigModel): string {
-  const config = generateSeaTunnelConfig(model, true) // 敏感信息加密
-  return JSON.stringify(config, null, 2)
+export function generateStorageConfig(model: SeaTunnelConfigModel): any {
+  const config: any = {}
+
+  if (model.env && Object.keys(model.env).length > 0) {
+    config.env = { ...model.env }
+  }
+
+  // 只保留核心和用户手动输入的字段
+  const keepKeys = [
+    'plugin_name',
+    'datasourceId',
+    'query',
+    'plugin_output',
+    'plugin_input',
+    'database',
+    'table',
+    'primary_keys',
+    'generate_sink_sql',
+    'enable_upsert',
+    'data_save_mode',
+    'batch_size',
+    'batch_interval_ms',
+    'max_retries',
+    'sink.enable-2pc',
+    'sink.label-prefix',
+    'doris.batch.size',
+    'sink.buffer-size',
+    'sink.buffer-count',
+    'doris.config'
+  ]
+
+  const simplifyConnector = (connector: SourceConnector | SinkConnector) => {
+    const simple: Record<string, any> = {}
+    for (const key of keepKeys) {
+      if (key in connector) {
+        simple[key] = (connector as any)[key]
+      }
+    }
+    return simple
+  }
+
+  if (model.sources && model.sources.length > 0) {
+    config.source = model.sources.map(simplifyConnector)
+  }
+
+  if (model.transforms && model.transforms.length > 0) {
+    config.transform = model.transforms // Transform 不涉及数据源，直接复制
+  }
+
+  if (model.sinks && model.sinks.length > 0) {
+    config.sink = model.sinks.map(simplifyConnector)
+  }
+
+  return config
 }
 
 /**
- * 生成最终提交的 JSON 字符串（不加密敏感信息）
+ * 生成格式化的 JSON 字符串（用于预览）
+ * @description 预览时显示最全的信息，包括 datasourceId 和脱敏后的连接详情
  */
-export function generateFinalJson(model: SeaTunnelConfigModel): string {
-  const config = generateSeaTunnelConfig(model, false) // 不加密
+export function generateJsonPreview(model: SeaTunnelConfigModel): string {
+  // 直接调用引擎配置生成函数，并启用脱敏
+  const previewConfig = generateSeaTunnelEngineConfig(model, true)
+  return JSON.stringify(previewConfig, null, 2)
+}
+
+/**
+ * 生成最终提交到 DS 后端存储的 JSON 字符串
+ */
+export function generateStorageJson(model: SeaTunnelConfigModel): string {
+  const config = generateStorageConfig(model)
   return JSON.stringify(config)
 }
 

@@ -42,10 +42,11 @@
   * **技术栈**: Java, SPI (Service Provider Interface)。
   * **核心职责**:
     1.  **参数解析**: 接收从 DS Master 传递过来的任务配置 JSON。
-    2.  **任务提交**: 调用 SeaTunnel Server 的 `/submit-job` 等 REST API，将任务提交到 SeaTunnel 集群。
-    3.  **状态追踪**: 通过轮询机制，使用 SeaTunnel REST API 查询异步任务的实时状态 (RUNNING, FINISHED, FAILED)。
-    4.  **日志汇报**: 从 SeaTunnel REST 接口获取任务执行日志，并输出到 DS 的任务日志中。
-    5.  **结果上报**: 根据 SeaTunnel 任务的最终状态，向 DS Master 汇报成功或失败。
+    2.  **数据源解析 (运行时)**: 在 Worker 端，根据任务参数中的 `datasourceId`，向 Master 节点请求或在本地解析出完整的数据库连接信息。
+    3.  **任务提交**: 调用 SeaTunnel Server 的 `/submit-job` 等 REST API，将任务提交到 SeaTunnel 集群。
+    4.  **状态追踪**: 通过轮询机制，使用 SeaTunnel REST API 查询异步任务的实时状态 (RUNNING, FINISHED, FAILED)。
+    5.  **日志汇报**: 从 SeaTunnel REST 接口获取任务执行日志，并输出到 DS 的任务日志中。
+    6.  **结果上报**: 根据 SeaTunnel 任务的最终状态，向 DS Master 汇报成功或失败。
 
 #### **3.2 前端组件 (Vue UI Component)**
 
@@ -60,12 +61,13 @@
 #### **3.3 数据交互流程**
 
 1.  **[前端]** 用户在 DS 界面的 SeaTunnel（REST）节点配置组件中进行可视化操作。
-2.  **[前端]** Vue 组件根据用户操作，生成一份完整的 SeaTunnel 任务配置 JSON。
+2.  **[前端]** Vue 组件根据用户操作，生成一份包含 `datasourceId` 的**精简版** SeaTunnel 任务配置 JSON。
 3.  **[DS Core]** 用户保存工作流，DS 将此 JSON 作为任务参数，存入数据库。
-4.  **[DS Core]** 工作流运行时，DS Master 将该任务及参数(JSON)分发给 Worker。
-5.  **[后端]** Worker 上的 SeaTunnel REST 插件被唤醒，接收到这份 JSON。
-6.  **[后端]** 插件解析 JSON，调用 SeaTunnel REST API 提交任务。
-7.  **[后端]** 插件轮询 SeaTunnel REST API 获取状态和日志，并向 DS Master 汇报。
+4.  **[DS Core]** 工作流运行时，DS Master 读取任务参数，并通过 `SeaTunnelRestParameters.getResources()` 方法得知任务依赖的数据源 ID。
+5.  **[DS Core]** Master 节点根据数据源 ID，从元数据中查询完整的连接信息，连同其他任务参数一起打包，分发给 Worker。
+6.  **[后端]** Worker 上的 SeaTunnel REST 插件被唤醒，接收到包含**完整数据源信息**的参数。
+7.  **[后端]** 插件解析参数，调用 SeaTunnel REST API 提交任务。
+8.  **[后端]** 插件轮询 SeaTunnel REST API 获取状态和日志，并向 DS Master 汇报。
 
 ### **4. 前端组件设计**
 
@@ -102,16 +104,11 @@ public class SeaTunnelRestParameters extends AbstractParameters {
 
 继承自 `AbstractTask`，是插件的核心逻辑实现。
 
-  * **`init()` 方法**: 在任务开始执行时调用，用于初始化任务，最重要的是**反序列化 JSON 参数**。
-    ```java
-    @Override
-    public void init() {
-        this.parameters = JSONUtils.parseObject(taskProps.getTaskParams(), SeaTunnelRestParameters.class);
-        // ...
-    }
-    ```
+  * **`init()` 方法**: 在任务开始执行时调用，用于初始化任务。核心步骤包括：
+    * 1. 反序列化 JSON 参数为 `SeaTunnelRestParameters` 对象。
+    * 2. 调用 `parameters.generateExtendedContext()` 方法，传入 Master 准备好的 `ResourceParametersHelper`，生成包含完整运行时配置的 `SeaTunnelRestTaskExecutionContext`。
   * **`handle()` 方法**: 实现核心的“**提交并轮询**”逻辑。
-    1.  **构建 Payload**: 从 `this.parameters` 中构建出将要提交给 SeaTunnel API 的完整 JSON Body。
+    1.  **获取配置**: 从 `init()` 阶段生成的 `ExecutionContext` 中直接获取已准备好的、完整的 SeaTunnel 配置 Map。
     2.  **提交任务**: 使用 `HttpClient` 调用 SeaTunnel 的 `/submit-job` REST API。获取返回的 `seatunnelJobId`。
     3.  **设置 AppId**: 调用 `setAppIds(seatunnelJobId)`，这样在 DS 的 UI 上就能看到这个外部任务的 ID。
     4.  **进入轮询循环**:
@@ -131,33 +128,51 @@ public class SeaTunnelRestParameters extends AbstractParameters {
         ```
     5.  **日志处理**: 在轮询过程中或任务结束后，调用 SeaTunnel REST 的日志 API，将关键日志通过 `logger.info()` 输出。
 
-#### **5.3 SPI 集成**
+#### **5.3 数据源处理机制 (核心设计)**
+
+本插件严格遵循 DolphinScheduler 的“Master准备资源，Worker使用资源”的设计模式，以实现安全、高效的数据源信息获取。
+
+  * **`SeaTunnelRestParameters.java` (资源声明与处理中心)**
+    * **`getResources()`**: 此方法是插件与 Master 节点沟通的桥梁。它负责解析前端传入的精简版 `jobConfig` JSON，提取出所有 `source` 和 `sink` 中配置的 `datasourceId`，并将其注册到 `ResourceParametersHelper` 中。这相当于向 Master 声明：“此任务需要这些数据源的详细信息”。
+    * **`generateExtendedContext(ResourceParametersHelper helper)`**: 此方法在 Worker 节点上被调用。它接收一个已经由 Master 填充了数据源信息的 `helper` 对象。方法内部会：
+      1. 再次解析 `jobConfig`。
+      2. 遍历 `source` 和 `sink`，根据 `datasourceId` 从 `helper` 中取出预先准备好的 `DataSourceParameters`。
+      3. 调用 Worker 端的 `DataSourceUtils.buildConnectionParams(dbType, connectionParams)` 将连接参数字符串解析为结构化的 `BaseConnectionParam` 对象。
+      4. 将 `BaseConnectionParam` 中的 `url`, `user`, `password` 等信息填充回 `jobConfig` 中，生成一份可以直接提交给 SeaTunnel 引擎的、完整的运行时配置。
+      5. 将这份完整配置存入 `SeaTunnelRestTaskExecutionContext` 对象并返回。
+
+  * **`SeaTunnelRestTaskExecutionContext.java` (数据容器)**
+    * 这是一个简单的 POJO，其唯一职责就是存放由 `generateExtendedContext` 方法生成的、可以直接提交运行的 `jobConfig` Map。
+
+  * **`SeaTunnelRestTask.java` (任务执行器)**
+    * 它的职责被大大简化。在 `init()` 阶段，它只调用 `parameters.generateExtendedContext()` 来获取一个“开箱即用”的上下文。在 `handle()` 阶段，它直接从上下文中取出最终的 `jobConfig` 进行提交，完全不关心数据源信息是如何被查询和填充的。
+
+#### **5.4 SPI 集成**
 
 创建 `SeaTunnelRestTaskChannel` 和 `SeaTunnelRestTaskChannelFactory`，并通过在 `resources/META-INF/services` 中配置，将插件注册到 DS 的任务体系中。
 
 ### **6. 开发实施路线图**
 
-**当前状态**: 阶段三已完成，正在进行阶段四（前端高级功能）
+**当前状态**: 阶段三已完成，正在进行阶段四（后端重构）
 
 详细的项目计划和任务追踪，请参考 [`project-plan.md`](../plan/project-plan.md)
 
 **已完成阶段**:
 - ✅ 阶段一：后端核心逻辑验证（2025-10-10）
 - ✅ 阶段二：前后端初步打通（2025-10-13）
-- ✅ 阶段三：前端最小可用配置（2025-10-13）
-- 🔄 阶段四：前端高级功能开发（进行中）
+- ✅ 阶段三：前端高级功能开发（2025-10-16）
 
 **当前任务**:
-- ✅ Source 连接器动态选择（已完成）
-- ⏳ Sink 连接器动态选择（进行中）
-- ⏳ Transform 支持
-- ⏳ 后端代码优化
+- ⏳ 后端数据源逻辑重构（进行中）
+- ⏳ Doris Sink 高级选项增强
+- ⏳ 端到端测试
 
 ---
 
-**文档版本**: v1.1  
-**创建时间**: 2025-10-10  
-**最后更新**: 2025-10-14  
+**文档版本**: v1.2
+**创建时间**: 2025-10-10
+**最后更新**: 2025-10-18
 **变更记录**:
+- v1.2 (2025-10-18): 新增并详细阐述了基于“Master准备，Worker使用”模式的后端数据源处理机制。更新了数据交互流程和任务主类的设计描述。
 - v1.1 (2025-10-14): 精简前端设计部分，添加链接到详细文档，更新开发路线图
 - v1.0 (2025-10-10): 初始版本

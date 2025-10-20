@@ -50,7 +50,8 @@ import {
   validateConfig,
   convertDorisPort,
   extractJdbcUrl,
-  generateFinalJson
+  generateStorageJson,
+  generateSeaTunnelEngineConfig
 } from './utils'
 import styles from './index.module.scss'
 import {
@@ -134,7 +135,8 @@ export default defineComponent({
           connectTimeout: configModel.connectTimeout,
           socketTimeout: configModel.socketTimeout,
           pollInterval: configModel.pollInterval,
-          jobConfig: jsonPreview.value
+          // jobConfig 应该使用包含完整运行时信息的配置，但这里为了UI交互暂时用预览JSON
+          jobConfig: generateJsonPreview(configModel)
         }
         emit('update:model', updatedModel)
       },
@@ -210,11 +212,8 @@ export default defineComponent({
     }
 
     onMounted(() => {
-      // 加载数据源列表
-      loadSourceDatasources()
-      loadSinkDatasources()
-
-      setValues(props.model)
+      // The setValues method is called by the parent component (detail-modal.tsx)
+      // We don't need to call it here.
     })
 
     const addSource = () => {
@@ -417,7 +416,10 @@ export default defineComponent({
       target.splice(0, target.length, ...source.map((item) => ({ ...item })))
     }
 
-    const setValues = (model: INodeData) => {
+    const setValues = async (model: INodeData) => {
+      // **新增**: 强制等待数据源 options 列表加载完成
+      await Promise.all([loadSourceDatasources(), loadSinkDatasources()])
+
       configModel.restEndpoint = model.restEndpoint || ''
       configModel.connectTimeout = model.connectTimeout || 60000
       configModel.socketTimeout = model.socketTimeout || 60000
@@ -430,6 +432,18 @@ export default defineComponent({
           assignArray(configModel.sources, parsed.source || [])
           assignArray(configModel.transforms, parsed.transform || [])
           assignArray(configModel.sinks, parsed.sink || [])
+
+          // 触发数据源详情的重新加载
+          configModel.sources.forEach((s) => {
+            if (s.datasourceId) {
+              onSourceDatasourceChange(s, s.datasourceId)
+            }
+          })
+          configModel.sinks.forEach((s) => {
+            if (s.datasourceId) {
+              onSinkDatasourceChange(s, s.datasourceId)
+            }
+          })
         } catch (unusedError) {
           assignArray(configModel.sources, [])
           assignArray(configModel.transforms, [])
@@ -444,14 +458,22 @@ export default defineComponent({
     }
 
     const getValues = () => {
-      const finalJson = generateFinalJson(configModel)
+      const storageJson = generateStorageJson(configModel)
+
+      // 实际运行时需要完整的 jobConfig，这里需要一个更完善的策略
+      // 但为了满足导入导出，优先使用 storageJson
       return {
         ...props.model,
         restEndpoint: configModel.restEndpoint,
         connectTimeout: configModel.connectTimeout,
         socketTimeout: configModel.socketTimeout,
         pollInterval: configModel.pollInterval,
-        jobConfig: finalJson
+        jobConfig: storageJson,
+
+        // 临时添加一个运行时配置，但这可能不是最佳实践
+        jobConfigForRun: JSON.stringify(
+          generateSeaTunnelEngineConfig(configModel, false)
+        )
       }
     }
 
@@ -923,25 +945,88 @@ export default defineComponent({
                                                   }
                                                 />
                                               </NFormItem>
-                                              <NFormItem label='Label 前缀'>
+                                              <NFormItem
+                                                label='标签前缀 (sink.label-prefix)'
+                                                path='sink.label-prefix'
+                                              >
                                                 <NInput
                                                   v-model:value={
-                                                    dorisSink[
-                                                      'sink.label-prefix'
-                                                    ]
+                                                    (
+                                                      dorisSink as SinkDorisConnector
+                                                    )['sink.label-prefix']
                                                   }
-                                                  placeholder='_my_prefix'
+                                                  placeholder='请输入'
                                                 />
                                               </NFormItem>
-                                              <NFormItem label='最大重试次数'>
+                                              <NFormItem
+                                                label='最大重试次数 (sink.max-retries)'
+                                                path='sink.max-retries'
+                                              >
                                                 <NInputNumber
                                                   v-model:value={
-                                                    dorisSink[
-                                                      'sink.max-retries'
-                                                    ]
+                                                    (
+                                                      dorisSink as SinkDorisConnector
+                                                    )['sink.max-retries']
                                                   }
                                                   min={0}
-                                                  style={{ width: '100%' }}
+                                                  placeholder='请输入'
+                                                />
+                                              </NFormItem>
+                                              <NFormItem
+                                                label='批次大小 (doris.batch.size)'
+                                                path='doris.batch.size'
+                                              >
+                                                <NInputNumber
+                                                  v-model:value={
+                                                    (
+                                                      dorisSink as SinkDorisConnector
+                                                    )['doris.batch.size']
+                                                  }
+                                                  min={0}
+                                                  placeholder='请输入'
+                                                />
+                                              </NFormItem>
+                                              <NFormItem
+                                                label='缓冲区大小 (sink.buffer-size)'
+                                                path='sink.buffer-size'
+                                              >
+                                                <NInputNumber
+                                                  v-model:value={
+                                                    (
+                                                      dorisSink as SinkDorisConnector
+                                                    )['sink.buffer-size']
+                                                  }
+                                                  min={0}
+                                                  placeholder='请输入'
+                                                />
+                                              </NFormItem>
+                                              <NFormItem
+                                                label='缓冲区数量 (sink.buffer-count)'
+                                                path='sink.buffer-count'
+                                              >
+                                                <NInputNumber
+                                                  v-model:value={
+                                                    (
+                                                      dorisSink as SinkDorisConnector
+                                                    )['sink.buffer-count']
+                                                  }
+                                                  min={0}
+                                                  placeholder='请输入'
+                                                />
+                                              </NFormItem>
+                                              <NFormItem
+                                                label='自定义配置 (doris.config)'
+                                                path='doris.config'
+                                              >
+                                                <NDynamicInput
+                                                  v-model:value={
+                                                    (
+                                                      dorisSink as SinkDorisConnector
+                                                    )['doris.config']
+                                                  }
+                                                  preset='pair'
+                                                  key-placeholder='请输入Key'
+                                                  value-placeholder='请输入Value'
                                                 />
                                               </NFormItem>
                                             </NSpace>

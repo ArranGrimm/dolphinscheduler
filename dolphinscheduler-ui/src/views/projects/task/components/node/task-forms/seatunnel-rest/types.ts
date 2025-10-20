@@ -98,6 +98,10 @@ export interface SinkDorisConnector extends SinkConnectorBase {
   'sink.label-prefix'?: string
   'sink.enable-2pc'?: boolean
   'sink.max-retries'?: number
+  'doris.batch.size'?: number
+  'sink.buffer-size'?: number
+  'sink.buffer-count'?: number
+  'doris.config'?: Array<{ key: string; value: any }>
 }
 
 // Sink 高级选项

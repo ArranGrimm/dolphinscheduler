@@ -53,11 +53,12 @@ public class SeaTunnelRestTask extends AbstractRemoteTask {
 
     private final TaskExecutionContext taskExecutionContext;
     private SeaTunnelRestParameters seaTunnelRestParameters;
+    private SeaTunnelRestTaskExecutionContext seaTunnelRestTaskExecutionContext;
     private String seaTunnelJobId;
     private CloseableHttpClient httpClient;
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    protected SeaTunnelRestTask(TaskExecutionContext taskExecutionContext) {
+    public SeaTunnelRestTask(TaskExecutionContext taskExecutionContext) {
         super(taskExecutionContext);
         this.taskExecutionContext = taskExecutionContext;
     }
@@ -69,6 +70,8 @@ public class SeaTunnelRestTask extends AbstractRemoteTask {
         if (this.seaTunnelRestParameters == null || !this.seaTunnelRestParameters.checkParameters()) {
             throw new SeaTunnelRestTaskException("SeaTunnel REST task params is not valid");
         }
+        this.seaTunnelRestTaskExecutionContext =
+                seaTunnelRestParameters.generateExtendedContext(taskExecutionContext.getResourceParametersHelper());
         this.httpClient = createHttpClient();
         log.info("Initialize SeaTunnel REST task params: {}", JSONUtils.toPrettyJsonString(seaTunnelRestParameters));
     }
@@ -117,11 +120,11 @@ public class SeaTunnelRestTask extends AbstractRemoteTask {
         String submitUrl = seaTunnelRestParameters.getRestEndpoint() + "/submit-job";
 
         // Build job config JSON
-        Map<String, Object> jobConfigMap = buildJobConfig();
+        Map<String, Object> jobConfigMap = seaTunnelRestTaskExecutionContext.getJobConfig();
         String jobConfigJson = JSONUtils.toJsonString(jobConfigMap);
 
         log.info("Submitting SeaTunnel job to: {}", submitUrl);
-        log.info("Job config: {}", jobConfigJson);
+        log.debug("Job config: {}", jobConfigJson);
 
         try {
             HttpPost httpPost = new HttpPost(submitUrl);
@@ -154,40 +157,6 @@ public class SeaTunnelRestTask extends AbstractRemoteTask {
         } finally {
             // No need to close httpClient here as it's managed by the class
         }
-    }
-
-    /**
-     * Build job config map from parameters
-     *
-     * @return job config map
-     */
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> buildJobConfig() {
-        Map<String, Object> config = new HashMap<>();
-
-        // If jobConfig JSON string is provided, use it directly
-        if (StringUtils.isNotEmpty(seaTunnelRestParameters.getJobConfig())) {
-            return (Map<String, Object>) JSONUtils.parseObject(seaTunnelRestParameters.getJobConfig(), Map.class);
-        }
-
-        // Otherwise build from structured parameters
-        if (seaTunnelRestParameters.getEnv() != null) {
-            config.put("env", seaTunnelRestParameters.getEnv());
-        }
-
-        if (seaTunnelRestParameters.getSource() != null) {
-            config.put("source", seaTunnelRestParameters.getSource());
-        }
-
-        if (seaTunnelRestParameters.getTransform() != null && !seaTunnelRestParameters.getTransform().isEmpty()) {
-            config.put("transform", seaTunnelRestParameters.getTransform());
-        }
-
-        if (seaTunnelRestParameters.getSink() != null) {
-            config.put("sink", seaTunnelRestParameters.getSink());
-        }
-
-        return config;
     }
 
     /**

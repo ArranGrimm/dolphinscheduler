@@ -17,14 +17,23 @@
 
 package org.apache.dolphinscheduler.plugin.task.seatunnel.rest;
 
+import org.apache.dolphinscheduler.plugin.task.api.enums.ResourceType;
 import org.apache.dolphinscheduler.plugin.task.api.model.ResourceInfo;
 import org.apache.dolphinscheduler.plugin.task.api.parameters.AbstractParameters;
+import org.apache.dolphinscheduler.plugin.task.api.parameters.resource.DataSourceParameters;
+import org.apache.dolphinscheduler.plugin.task.api.parameters.resource.ResourceParametersHelper;
+import org.apache.dolphinscheduler.plugin.datasource.api.utils.DataSourceUtils;
+import org.apache.dolphinscheduler.plugin.datasource.api.utils.PasswordUtils;
+import org.apache.dolphinscheduler.spi.datasource.BaseConnectionParam;
+import org.apache.dolphinscheduler.spi.enums.DbType;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.dolphinscheduler.common.utils.JSONUtils;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import com.fasterxml.jackson.core.type.TypeReference;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -102,7 +111,126 @@ public class SeaTunnelRestParameters extends AbstractParameters {
     }
 
     @Override
+    public ResourceParametersHelper getResources() {
+        ResourceParametersHelper resources = super.getResources();
+        if (StringUtils.isEmpty(jobConfig)) {
+            return resources;
+        }
+
+        Map<String, Object> jobConfigMap = JSONUtils.parseObject(jobConfig, new TypeReference<Map<String, Object>>() {});
+        if (jobConfigMap == null) {
+            return resources;
+        }
+
+        extractDatasourceIds(jobConfigMap.get("source"), resources);
+        extractDatasourceIds(jobConfigMap.get("sink"), resources);
+
+        return resources;
+    }
+
+    @Override
     public List<ResourceInfo> getResourceFilesList() {
         return Collections.emptyList();
+    }
+
+    @SuppressWarnings("unchecked")
+    private void extractDatasourceIds(Object connectorsObj, ResourceParametersHelper resources) {
+        if (connectorsObj == null || !(connectorsObj instanceof List)) {
+            return;
+        }
+        List<Map<String, Object>> connectors = (List<Map<String, Object>>) connectorsObj;
+        for (Map<String, Object> connector : connectors) {
+            Object datasourceIdObj = connector.get("datasourceId");
+            if (datasourceIdObj != null) {
+                int datasourceId = Integer.parseInt(String.valueOf(datasourceIdObj));
+                if (datasourceId != 0) {
+                    resources.put(ResourceType.DATASOURCE, datasourceId);
+                }
+            }
+        }
+    }
+
+    public SeaTunnelRestTaskExecutionContext generateExtendedContext(ResourceParametersHelper resourceParametersHelper) {
+        if (StringUtils.isEmpty(jobConfig)) {
+            throw new SeaTunnelRestTaskException("Job config is empty");
+        }
+
+        Map<String, Object> jobConfigMap =
+                JSONUtils.parseObject(jobConfig, new TypeReference<Map<String, Object>>() {});
+
+        if (jobConfigMap == null) {
+            throw new SeaTunnelRestTaskException("Parsed job config is null");
+        }
+
+        enrichConnectors(jobConfigMap.get("source"), resourceParametersHelper);
+        enrichConnectors(jobConfigMap.get("sink"), resourceParametersHelper);
+
+        return new SeaTunnelRestTaskExecutionContext(jobConfigMap);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void enrichConnectors(Object connectorsObj, ResourceParametersHelper resourceParametersHelper) {
+        if (connectorsObj == null || !(connectorsObj instanceof List)) {
+            return;
+        }
+        List<Map<String, Object>> connectors = (List<Map<String, Object>>) connectorsObj;
+        for (Map<String, Object> connector : connectors) {
+            enrichConnectorWithDatasource(connector, resourceParametersHelper);
+        }
+    }
+
+    private void enrichConnectorWithDatasource(Map<String, Object> connector,
+                                             ResourceParametersHelper resourceParametersHelper) {
+        Object datasourceIdObj = connector.get("datasourceId");
+        if (datasourceIdObj == null) {
+            return;
+        }
+
+        int datasourceId = Integer.parseInt(String.valueOf(datasourceIdObj));
+        if (datasourceId == 0) {
+            return;
+        }
+
+        DataSourceParameters dataSourceParameters = (DataSourceParameters) resourceParametersHelper
+                .getResourceParameters(ResourceType.DATASOURCE, datasourceId);
+
+        if (dataSourceParameters == null) {
+            throw new SeaTunnelRestTaskException(String.format("Datasource %d not found in ResourceParametersHelper", datasourceId));
+        }
+
+        BaseConnectionParam baseConnectionParam =
+                (BaseConnectionParam) DataSourceUtils.buildConnectionParams(dataSourceParameters.getType(),
+                        dataSourceParameters.getConnectionParams());
+
+        if (baseConnectionParam == null) {
+            throw new SeaTunnelRestTaskException(String.format("Failed to build connection parameters for datasource %d", datasourceId));
+        }
+
+        connector.put("user", baseConnectionParam.getUser());
+        connector.put("password", PasswordUtils.decodePassword(baseConnectionParam.getPassword()));
+        connector.put("url", baseConnectionParam.getJdbcUrl());
+
+        DbType dbType = dataSourceParameters.getType();
+        switch (dbType) {
+            case POSTGRESQL:
+                connector.put("driver", "org.postgresql.Driver");
+                break;
+            case ORACLE:
+                connector.put("driver", "oracle.jdbc.OracleDriver");
+                break;
+            case DORIS:
+                String jdbcUrl = baseConnectionParam.getJdbcUrl();
+                String[] parts = jdbcUrl.split("//");
+                if (parts.length > 1) {
+                    String hostAndPort = parts[1].split("/")[0];
+                    String host = hostAndPort.split(":")[0];
+                    connector.put("fenodes", host + ":8030");
+                }
+                connector.put("username", baseConnectionParam.getUser());
+                connector.remove("user");
+                break;
+            default:
+                break;
+        }
     }
 }
