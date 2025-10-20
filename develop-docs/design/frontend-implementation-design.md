@@ -330,12 +330,19 @@ const onSourceDatasourceChange = async (
 
 ### 5.2 数据源持久化与工作流导入/导出兼容性
 
-**问题**: 当前 `jobConfig` 在保存时丢失 `datasourceId`，导致工作流导入/导出后无法回显数据源。
+**问题**: `jobConfig` 在保存时若只包含 `url`, `user` 等具体连接信息，会导致工作流导入/导出后，因环境变化而失效，同时也丢失了与数据源中心的关联。
 
-**解决方案 (设计优化)**:
-1. **修改存储逻辑 (`getValues`)**: 生成的 `jobConfig` JSON 中必须保留 `datasourceId`，同时移除 `password` 等衍生信息。
-2. **修改加载逻辑 (`setValues`)**: 表单初始化时，优先读取 `datasourceId`，并根据它重新触发数据源详情查询，填充表单。
-3. **分离“存储配置”与“提交配置”**: 确保用于持久化和用于运行时提交的配置分离，解决兼容性问题。
+**解决方案 (最终实现)**:
+采用“**前端存 ID，运行时解析**”的模式，并解决前端异步加载导致的回显失败问题。
+
+1.  **修改存储逻辑 (`getValues`)**: 调用 `generateStorageJson` 生成只包含 `datasourceId` 的精简版 `jobConfig` JSON，用于持久化。
+2.  **修改加载逻辑 (`setValues`)**:
+    - 将 `setValues` 方法改造为 `async` 函数。
+    - 在函数入口处，使用 `await Promise.all()` 强制等待 `loadSourceDatasources()` 和 `loadSinkDatasources()` 两个异步函数执行完毕，确保数据源下拉框的 `options` 列表已准备就绪。
+    - 在 `options` 列表加载完成后，再执行后续的 `jobConfig` 解析和表单赋值操作。
+    - 这样从根本上保证了“数据准备先于数据回显”，彻底解决了因时序竞争导致的回显失败问题。
+3.  **修改预览逻辑 (`generateJsonPreview`)**:
+    - 预览时调用 `generateSeaTunnelEngineConfig(model, true)`，生成一份脱敏后的、不含 `datasourceId` 的**运行时**配置，让用户清晰地看到即将提交给 SeaTunnel 引擎的最终配置。
 
 ### 5.3 JSON 预览与密码加密
 
@@ -551,14 +558,16 @@ getDatasourceTableColumnsById(datasourceId, database, tableName)
 | Phase 1 | 基础增强：Tabs、Source 简化、数据源集成 | ✅ 已完成 |
 | Phase 2 | JSON 预览：Monaco + 密码掩码 + 实时同步 | ✅ 已完成 |
 | Phase 3 | 高级功能：Sink（JDBC + Doris）、Transform、校验 | ✅ 已完成 |
-| Phase 4 | 优化与测试：体验优化、性能、端到端测试 | 🚧 进行中（体验 ✅，测试 ⏳） |
+| Phase 4 | 优化与测试：体验优化、数据源回显修复 | ✅ 已完成 |
+| Phase 5 | 端到端测试与文档 | 🚧 进行中 |
 
 ---
 
-**文档版本**: v1.4  
-**创建时间**: 2025-10-13  
-**最后更新**: 2025-10-16  
+**文档版本**: v1.5
+**创建时间**: 2025-10-13
+**最后更新**: 2025-10-20
 **变更记录**:
+- v1.5 (2025-10-20): 明确数据源持久化方案的最终实现，阐述通过 async/await 解决回显时序问题的具体逻辑。
 - v1.4 (2025-10-16): 补充 Doris 性能调优参数，增加数据源持久化设计方案。
 - v1.3 (2025-10-16): 根据最终实现，更新 Sink 连接器的高级选项定义。
 - v1.2 (2025-10-15): Sink/Transform 支持落地，校验与 JSON 生成更新

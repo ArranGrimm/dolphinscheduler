@@ -1,8 +1,8 @@
 # SeaTunnel Sink 选项梳理（PostgreSQL / Oracle / Doris）
 
-**版本**: v1.0  
+**版本**: v1.1  
 **创建时间**: 2025-10-15  
-**作者**: AI 协助编写（参考 SeaTunnel 官方文档）
+**最后更新**: 2025-10-20
 
 ---
 
