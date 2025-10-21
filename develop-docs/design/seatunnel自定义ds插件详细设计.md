@@ -63,7 +63,7 @@
 1.  **[前端]** 用户在 DS 界面的 SeaTunnel（REST）节点配置组件中进行可视化操作。
 2.  **[前端]** Vue 组件根据用户操作，生成一份包含 `datasourceId` 的**精简版** SeaTunnel 任务配置 JSON。
 3.  **[DS Core]** 用户保存工作流，DS 将此 JSON 作为任务参数，存入数据库。
-4.  **[DS Core]** 工作流运行时，DS Master 读取任务参数，并通过 `SeaTunnelRestParameters.getResources()` 方法得知任务依赖的数据源 ID。
+4.  **[DS Core]** 工作流运行时，DS Master 读取任务参数，并通过调用 `SeaTunnelRestTaskChannel.getResources()` 方法得知任务依赖的数据源 ID。
 5.  **[DS Core]** Master 节点根据数据源 ID，从元数据中查询完整的连接信息，连同其他任务参数一起打包，分发给 Worker。
 6.  **[后端]** Worker 上的 SeaTunnel REST 插件被唤醒，接收到包含**完整数据源信息**的参数。
 7.  **[后端]** 插件解析参数，调用 SeaTunnel REST API 提交任务。
@@ -130,7 +130,7 @@ public class SeaTunnelRestParameters extends AbstractParameters {
 
 #### **5.3 数据源处理机制 (核心设计)**
 
-本插件严格遵循 DolphinScheduler 的“Master准备资源，Worker使用资源”的设计模式，以实现安全、高效的数据源信息获取。
+本插件严格遵循 DolphinScheduler 的“Master准备资源，Worker使用资源”的设计模式，以实现安全、高效的数据源信息获取。整个流程由 `TaskChannel` 作为入口触发。
 
   * **`SeaTunnelRestParameters.java` (资源声明与处理中心)**
     * **`getResources()`**: 此方法是插件与 Master 节点沟通的桥梁。它负责解析前端传入的精简版 `jobConfig` JSON，提取出所有 `source` 和 `sink` 中配置的 `datasourceId`，并将其注册到 `ResourceParametersHelper` 中。这相当于向 Master 声明：“此任务需要这些数据源的详细信息”。
@@ -147,7 +147,24 @@ public class SeaTunnelRestParameters extends AbstractParameters {
   * **`SeaTunnelRestTask.java` (任务执行器)**
     * 它的职责被大大简化。在 `init()` 阶段，它只调用 `parameters.generateExtendedContext()` 来获取一个“开箱即用”的上下文。在 `handle()` 阶段，它直接从上下文中取出最终的 `jobConfig` 进行提交，完全不关心数据源信息是如何被查询和填充的。
 
-#### **5.4 SPI 集成**
+#### **5.4 TaskChannel 资源声明入口**
+
+在 DolphinScheduler 的插件体系中，`TaskChannel` 是 Master 节点与具体任务插件沟通资源需求的**唯一入口**。Worker 节点出现的 `NullPointerException` 的根本原因，正是由于 `SeaTunnelRestTaskChannel` 未能正确实现资源声明的接口。
+
+  * **`SeaTunnelRestTaskChannel.java` (Master 与插件的桥梁)**
+    * **`getResources(String parameters)`**: 这个方法是解决数据源问题的**关键**。Master 节点在准备任务时，会调用**这个方法**，而不是直接调用 `Parameters` 对象的方法。
+      我们的实现遵循了官方插件的最佳实践：
+      ```java
+      @Override
+      public ResourceParametersHelper getResources(String parameters) {
+          // 1. 将 taskParams 字符串反序列化为 Parameters 对象
+          // 2. 调用 Parameters 对象自身的 getResources() 方法，完成资源声明
+          return JSONUtils.parseObject(parameters, SeaTunnelRestParameters.class).getResources();
+      }
+      ```
+    * 通过这个实现，Master 才能够正确地调用到 `SeaTunnelRestParameters.getResources()`，识别任务所需的数据源，从而将完整的连接信息传递给 Worker。
+
+#### **5.5 SPI 集成**
 
 创建 `SeaTunnelRestTaskChannel` 和 `SeaTunnelRestTaskChannelFactory`，并通过在 `resources/META-INF/services` 中配置，将插件注册到 DS 的任务体系中。
 
@@ -169,10 +186,11 @@ public class SeaTunnelRestParameters extends AbstractParameters {
 
 ---
 
-**文档版本**: v1.3
+**文档版本**: v1.4
 **创建时间**: 2025-10-10
 **最后更新**: 2025-10-20
 **变更记录**:
+- v1.4 (2025-10-21): 在后端设计中补充了关于 TaskChannel 作为资源声明入口的关键作用，阐明了数据源问题的根本原因及解决方案。
 - v1.3 (2025-10-20): 同步项目最新状态，保持版本一致性。
 - v1.2 (2025-10-18): 新增并详细阐述了基于“Master准备，Worker使用”模式的后端数据源处理机制。更新了数据交互流程和任务主类的设计描述。
 - v1.1 (2025-10-14): 精简前端设计部分，添加链接到详细文档，更新开发路线图

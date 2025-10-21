@@ -183,6 +183,9 @@ export function generateSeaTunnelEngineConfig(
       if (s.table) sink.table = s.table
 
       if (s.plugin_name === 'Jdbc') {
+        // --- FIX: Add missing query field inside the type guard ---
+        if (s.query) sink.query = s.query
+        // --- END FIX ---
         if ((s as any).primary_keys) sink.primary_keys = (s as any).primary_keys
         if ((s as any).generate_sink_sql !== undefined) {
           sink.generate_sink_sql = (s as any).generate_sink_sql
@@ -249,7 +252,21 @@ export function generateStorageConfig(model: SeaTunnelConfigModel): any {
     const simple: Record<string, any> = {}
     for (const key of keepKeys) {
       if (key in connector) {
-        simple[key] = (connector as any)[key]
+        const value = (connector as any)[key]
+
+        // FIX: Exclude empty 'table' and 'primary_keys' from stored config
+        if (key === 'table' && value === '') {
+          continue
+        }
+        if (
+          key === 'primary_keys' &&
+          Array.isArray(value) &&
+          value.length === 0
+        ) {
+          continue
+        }
+
+        simple[key] = value
       }
     }
     return simple

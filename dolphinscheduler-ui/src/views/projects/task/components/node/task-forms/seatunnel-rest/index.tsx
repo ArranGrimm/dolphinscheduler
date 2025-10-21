@@ -43,7 +43,8 @@ import type {
   SourceConnector,
   SinkConnector,
   TransformConnector,
-  SinkDorisConnector
+  SinkDorisConnector,
+  SinkJdbcConnector
 } from './types'
 import {
   generateJsonPreview,
@@ -356,7 +357,12 @@ export default defineComponent({
             }`
           sink.user = dsDetail.userName
           sink.password = dsDetail.password
-          sink.database = connectionParams?.database || dsDetail.database || ''
+          // --- FIX: Respect query mode ---
+          if (!(sink as SinkJdbcConnector).query) {
+            sink.database =
+              connectionParams?.database || dsDetail.database || ''
+          }
+          // --- END FIX ---
         } else if (selectedDs.type === 'ORACLE') {
           sink.plugin_name = 'Jdbc'
           sink.driver = 'oracle.jdbc.OracleDriver'
@@ -367,7 +373,12 @@ export default defineComponent({
             }`
           sink.user = dsDetail.userName
           sink.password = dsDetail.password
-          sink.database = connectionParams?.database || dsDetail.database || ''
+          // --- FIX: Respect query mode ---
+          if (!(sink as SinkJdbcConnector).query) {
+            sink.database =
+              connectionParams?.database || dsDetail.database || ''
+          }
+          // --- END FIX ---
         } else if (selectedDs.type === 'DORIS') {
           sink.plugin_name = 'Doris'
           sink.driver = ''
