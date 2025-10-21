@@ -154,7 +154,6 @@ public class SeaTunnelRestTaskIntegrationTest {
         Map<String, Object> env = new HashMap<>();
         env.put("job.mode", "BATCH");
         env.put("job.name", "integration_test_fake_source");
-        parameters.setEnv(env);
 
         // FakeSource
         List<Map<String, Object>> sourceList = new ArrayList<>();
@@ -171,14 +170,12 @@ public class SeaTunnelRestTaskIntegrationTest {
         fakeSource.put("schema", schema);
 
         sourceList.add(fakeSource);
-        parameters.setSource(sourceList);
 
         // Console sink
         List<Map<String, Object>> sinkList = new ArrayList<>();
         Map<String, Object> consoleSink = new HashMap<>();
         consoleSink.put("plugin_name", "Console");
         sinkList.add(consoleSink);
-        parameters.setSink(sinkList);
 
         return parameters;
     }
@@ -196,7 +193,6 @@ public class SeaTunnelRestTaskIntegrationTest {
 
         Map<String, Object> env = new HashMap<>();
         env.put("job.mode", "BATCH");
-        parameters.setEnv(env);
 
         // JDBC Oracle source
         List<Map<String, Object>> sourceList = new ArrayList<>();
@@ -209,14 +205,12 @@ public class SeaTunnelRestTaskIntegrationTest {
         jdbcSource.put("query", query);
 
         sourceList.add(jdbcSource);
-        parameters.setSource(sourceList);
 
         // Console sink
         List<Map<String, Object>> sinkList = new ArrayList<>();
         Map<String, Object> consoleSink = new HashMap<>();
         consoleSink.put("plugin_name", "Console");
         sinkList.add(consoleSink);
-        parameters.setSink(sinkList);
 
         return parameters;
     }

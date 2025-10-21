@@ -71,21 +71,18 @@ public class SeaTunnelRestTaskTest {
         // Set up structured config (env, source, sink)
         Map<String, Object> env = new HashMap<>();
         env.put("job.name", "test_job");
-        parameters.setEnv(env);
 
         List<Map<String, Object>> source = new ArrayList<>();
         Map<String, Object> fakeSource = new HashMap<>();
         fakeSource.put("plugin_name", "FakeSource");
         fakeSource.put("result_table_name", "fake");
         source.add(fakeSource);
-        parameters.setSource(source);
 
         List<Map<String, Object>> sink = new ArrayList<>();
         Map<String, Object> consoleSink = new HashMap<>();
         consoleSink.put("plugin_name", "Console");
         consoleSink.put("source_table_name", "fake");
         sink.add(consoleSink);
-        parameters.setSink(sink);
 
         // Validation should pass with complete structured config
         Assertions.assertTrue(parameters.checkParameters());

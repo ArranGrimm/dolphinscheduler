@@ -44,6 +44,6 @@ public class SeaTunnelRestTaskChannel implements TaskChannel {
 
     @Override
     public ResourceParametersHelper getResources(String parameters) {
-        return null;
+        return JSONUtils.parseObject(parameters, SeaTunnelRestParameters.class).getResources();
     }
 }

@@ -17,28 +17,29 @@
 
 package org.apache.dolphinscheduler.plugin.task.seatunnel.rest;
 
+import org.apache.dolphinscheduler.common.utils.JSONUtils;
+import org.apache.dolphinscheduler.plugin.datasource.api.utils.DataSourceUtils;
+import org.apache.dolphinscheduler.plugin.datasource.api.utils.PasswordUtils;
 import org.apache.dolphinscheduler.plugin.task.api.enums.ResourceType;
 import org.apache.dolphinscheduler.plugin.task.api.model.ResourceInfo;
 import org.apache.dolphinscheduler.plugin.task.api.parameters.AbstractParameters;
 import org.apache.dolphinscheduler.plugin.task.api.parameters.resource.DataSourceParameters;
 import org.apache.dolphinscheduler.plugin.task.api.parameters.resource.ResourceParametersHelper;
-import org.apache.dolphinscheduler.plugin.datasource.api.utils.DataSourceUtils;
-import org.apache.dolphinscheduler.plugin.datasource.api.utils.PasswordUtils;
 import org.apache.dolphinscheduler.spi.datasource.BaseConnectionParam;
 import org.apache.dolphinscheduler.spi.enums.DbType;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.dolphinscheduler.common.utils.JSONUtils;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import com.fasterxml.jackson.core.type.TypeReference;
 
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
+
+import com.fasterxml.jackson.core.type.TypeReference;
 
 @Getter
 @Setter
@@ -57,26 +58,6 @@ public class SeaTunnelRestParameters extends AbstractParameters {
      * Contains env, source, transform, sink configurations
      */
     private String jobConfig;
-
-    /**
-     * env config as Map for flexibility
-     */
-    private Map<String, Object> env;
-
-    /**
-     * source connectors config
-     */
-    private List<Map<String, Object>> source;
-
-    /**
-     * transform connectors config
-     */
-    private List<Map<String, Object>> transform;
-
-    /**
-     * sink connectors config
-     */
-    private List<Map<String, Object>> sink;
 
     /**
      * Connection timeout in milliseconds
@@ -101,8 +82,7 @@ public class SeaTunnelRestParameters extends AbstractParameters {
         }
 
         // Check if either jobConfig JSON or structured config (env/source/sink) is provided
-        if (StringUtils.isEmpty(this.jobConfig) &&
-                (this.env == null || this.source == null || this.sink == null)) {
+        if (StringUtils.isEmpty(this.jobConfig)) {
             log.error("SeaTunnel job configuration is incomplete");
             return false;
         }
@@ -112,12 +92,15 @@ public class SeaTunnelRestParameters extends AbstractParameters {
 
     @Override
     public ResourceParametersHelper getResources() {
+        // --- [MASTER DEBUG] 确认 getResources() 被调用 ---
+        log.info("--- [MASTER NODE] Entering getResources(). jobConfig is: {}", jobConfig);
         ResourceParametersHelper resources = super.getResources();
         if (StringUtils.isEmpty(jobConfig)) {
             return resources;
         }
 
-        Map<String, Object> jobConfigMap = JSONUtils.parseObject(jobConfig, new TypeReference<Map<String, Object>>() {});
+        Map<String, Object> jobConfigMap = JSONUtils.parseObject(jobConfig, new TypeReference<Map<String, Object>>() {
+        });
         if (jobConfigMap == null) {
             return resources;
         }
@@ -145,6 +128,8 @@ public class SeaTunnelRestParameters extends AbstractParameters {
                 int datasourceId = Integer.parseInt(String.valueOf(datasourceIdObj));
                 if (datasourceId != 0) {
                     resources.put(ResourceType.DATASOURCE, datasourceId);
+                    // --- [MASTER DEBUG] 确认数据源ID被注册 ---
+                    log.info("--- [MASTER NODE] Found and registered datasourceId: {}", datasourceId);
                 }
             }
         }
@@ -156,7 +141,8 @@ public class SeaTunnelRestParameters extends AbstractParameters {
         }
 
         Map<String, Object> jobConfigMap =
-                JSONUtils.parseObject(jobConfig, new TypeReference<Map<String, Object>>() {});
+                JSONUtils.parseObject(jobConfig, new TypeReference<Map<String, Object>>() {
+                });
 
         if (jobConfigMap == null) {
             throw new SeaTunnelRestTaskException("Parsed job config is null");
@@ -164,7 +150,6 @@ public class SeaTunnelRestParameters extends AbstractParameters {
 
         enrichConnectors(jobConfigMap.get("source"), resourceParametersHelper);
         enrichConnectors(jobConfigMap.get("sink"), resourceParametersHelper);
-
         return new SeaTunnelRestTaskExecutionContext(jobConfigMap);
     }
 
@@ -180,7 +165,7 @@ public class SeaTunnelRestParameters extends AbstractParameters {
     }
 
     private void enrichConnectorWithDatasource(Map<String, Object> connector,
-                                             ResourceParametersHelper resourceParametersHelper) {
+                                               ResourceParametersHelper resourceParametersHelper) {
         Object datasourceIdObj = connector.get("datasourceId");
         if (datasourceIdObj == null) {
             return;
@@ -190,12 +175,12 @@ public class SeaTunnelRestParameters extends AbstractParameters {
         if (datasourceId == 0) {
             return;
         }
-
         DataSourceParameters dataSourceParameters = (DataSourceParameters) resourceParametersHelper
                 .getResourceParameters(ResourceType.DATASOURCE, datasourceId);
-
         if (dataSourceParameters == null) {
-            throw new SeaTunnelRestTaskException(String.format("Datasource %d not found in ResourceParametersHelper", datasourceId));
+            // Re-throw exception here as this is a critical failure on the worker side
+            throw new SeaTunnelRestTaskException(
+                    String.format("Datasource %d not found in ResourceParametersHelper", datasourceId));
         }
 
         BaseConnectionParam baseConnectionParam =
@@ -203,7 +188,8 @@ public class SeaTunnelRestParameters extends AbstractParameters {
                         dataSourceParameters.getConnectionParams());
 
         if (baseConnectionParam == null) {
-            throw new SeaTunnelRestTaskException(String.format("Failed to build connection parameters for datasource %d", datasourceId));
+            throw new SeaTunnelRestTaskException(
+                    String.format("Failed to build connection parameters for datasource %d", datasourceId));
         }
 
         connector.put("user", baseConnectionParam.getUser());

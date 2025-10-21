@@ -18,10 +18,13 @@
 package org.apache.dolphinscheduler.plugin.task.seatunnel.rest;
 
 public enum SeaTunnelJobStatus {
+
     FINISHED,
     FAILED,
     CANCELED,
     CANCELLED, // SeaTunnel API might use different spellings
+    UNKNOWABLE,
+    PENDING,
     RUNNING,
     UNKNOWN;
 

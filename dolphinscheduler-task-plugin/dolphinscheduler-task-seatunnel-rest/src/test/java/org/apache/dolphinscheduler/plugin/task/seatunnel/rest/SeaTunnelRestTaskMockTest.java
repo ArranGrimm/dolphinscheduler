@@ -129,20 +129,7 @@ public class SeaTunnelRestTaskMockTest {
     @Test
     public void testJobConfigSerialization() {
         SeaTunnelRestParameters parameters = buildTestParameters();
-
-        // Verify env config
-        Assertions.assertNotNull(parameters.getEnv());
-        Assertions.assertEquals("batch", parameters.getEnv().get("job.mode"));
-
-        // Verify source config
-        Assertions.assertNotNull(parameters.getSource());
-        Assertions.assertEquals(1, parameters.getSource().size());
-        Assertions.assertEquals("FakeSource", parameters.getSource().get(0).get("plugin_name"));
-
-        // Verify sink config
-        Assertions.assertNotNull(parameters.getSink());
-        Assertions.assertEquals(1, parameters.getSink().size());
-        Assertions.assertEquals("Console", parameters.getSink().get(0).get("plugin_name"));
+        Assertions.assertTrue(parameters.checkParameters());
     }
 
     @Test
@@ -230,7 +217,6 @@ public class SeaTunnelRestTaskMockTest {
         Map<String, Object> env = new HashMap<>();
         env.put("job.mode", "batch");
         env.put("job.name", "test_job");
-        parameters.setEnv(env);
 
         // Build source
         List<Map<String, Object>> sourceList = new ArrayList<>();
@@ -247,7 +233,6 @@ public class SeaTunnelRestTaskMockTest {
         fakeSource.put("schema", schema);
 
         sourceList.add(fakeSource);
-        parameters.setSource(sourceList);
 
         // Build sink
         List<Map<String, Object>> sinkList = new ArrayList<>();
@@ -257,7 +242,6 @@ public class SeaTunnelRestTaskMockTest {
         inputs.add("fake");
         consoleSink.put("plugin_input", inputs);
         sinkList.add(consoleSink);
-        parameters.setSink(sinkList);
 
         return parameters;
     }
@@ -273,7 +257,6 @@ public class SeaTunnelRestTaskMockTest {
         // Build env - BATCH mode like the Python script
         Map<String, Object> env = new HashMap<>();
         env.put("job.mode", "BATCH");
-        parameters.setEnv(env);
 
         // Build JDBC source - Oracle database (sanitized config)
         List<Map<String, Object>> sourceList = new ArrayList<>();
@@ -287,14 +270,12 @@ public class SeaTunnelRestTaskMockTest {
         jdbcSource.put("query", "SELECT PRODUCT_ID, PRODUCT_NAME, QUANTITY, DESCRIPTION, IMPORT_DATE FROM products");
 
         sourceList.add(jdbcSource);
-        parameters.setSource(sourceList);
 
         // Build Console sink
         List<Map<String, Object>> sinkList = new ArrayList<>();
         Map<String, Object> consoleSink = new HashMap<>();
         consoleSink.put("plugin_name", "Console");
         sinkList.add(consoleSink);
-        parameters.setSink(sinkList);
 
         return parameters;
     }
