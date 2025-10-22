@@ -492,7 +492,11 @@ export default defineComponent({
               <NTabPane name='basic' tab='Job Config'>
                 <NSpace vertical size='large'>
                   {/* Env 配置 */}
-                  <NCard title='Env 配置' size='small'>
+                  <NCard
+                    title='Env 配置'
+                    size='small'
+                    class={styles['config-card']}
+                  >
                     <NFormItem label='Job Mode'>
                       <NInput
                         v-model:value={configModel.env['job.mode']}
@@ -502,7 +506,11 @@ export default defineComponent({
                   </NCard>
 
                   {/* Source 配置 */}
-                  <NCard title='Source 配置' size='small'>
+                  <NCard
+                    title='Source 配置'
+                    size='small'
+                    class={styles['config-card']}
+                  >
                     {{
                       header: () => (
                         <NSpace
@@ -584,7 +592,11 @@ export default defineComponent({
                   </NCard>
 
                   {/* Transform 配置 */}
-                  <NCard title='Transform 配置' size='small'>
+                  <NCard
+                    title='Transform 配置'
+                    size='small'
+                    class={styles['config-card']}
+                  >
                     {{
                       header: () => (
                         <NSpace
@@ -667,7 +679,11 @@ export default defineComponent({
                   </NCard>
 
                   {/* Sink 配置 */}
-                  <NCard title='Sink 配置' size='small'>
+                  <NCard
+                    title='Sink 配置'
+                    size='small'
+                    class={styles['config-card']}
+                  >
                     {{
                       header: () => (
                         <NSpace

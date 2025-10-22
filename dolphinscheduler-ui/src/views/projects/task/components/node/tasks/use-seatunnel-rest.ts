@@ -57,14 +57,22 @@ export function useSeaTunnelRest({
 
   return {
     json: [
-      Fields.useName(from),
+      { ...Fields.useName(from), span: 12 },
+      {
+        type: 'custom', // <- 明确指定类型为 'custom'
+        span: 12,
+        widget: h('div') // <- 渲染一个空的、因此不可见的 div 元素
+      },
       ...Fields.useTaskDefinition({ projectCode, from, readonly, data, model }),
-      Fields.useRunFlag(),
+      { ...Fields.useRunFlag(), span: 12 },
       Fields.useDescription(),
-      Fields.useTaskPriority(),
-      Fields.useWorkerGroup(projectCode),
-      Fields.useEnvironmentName(model, !data?.id),
-      ...Fields.useTaskGroup(model, projectCode),
+      { ...Fields.useTaskPriority(), span: 12 },
+      { ...Fields.useWorkerGroup(projectCode), span: 12 },
+      { ...Fields.useEnvironmentName(model, !data?.id), span: 12 },
+      ...Fields.useTaskGroup(model, projectCode).map((field) => ({
+        ...field,
+        span: 12
+      })),
       ...Fields.useFailed(),
       Fields.useDelayTime(model),
       ...Fields.useTimeoutAlarm(model),
@@ -72,7 +80,7 @@ export function useSeaTunnelRest({
         type: 'input',
         field: 'restEndpoint',
         name: 'SeaTunnel REST Endpoint',
-        span: 24,
+        span: 12,
         props: {
           placeholder: 'http://localhost:8080'
         },
@@ -80,6 +88,11 @@ export function useSeaTunnelRest({
           trigger: ['input', 'blur'],
           required: true
         }
+      },
+      {
+        type: 'custom', // <- 明确指定类型为 'custom'
+        span: 12,
+        widget: h('div') // <- 渲染一个空的、因此不可见的 div 元素
       },
       {
         type: 'input-number',
@@ -114,7 +127,10 @@ export function useSeaTunnelRest({
         span: 24,
         widget: h(SeaTunnelRestForm)
       },
-      Fields.usePreTasks()
+      {
+        ...Fields.usePreTasks(), // <- 使用扩展运算符(...)来继承它的所有原有属性
+        span: 12
+      }
     ] as IJsonItem[],
     model
   }

@@ -50,8 +50,41 @@
   align-items: center;
 }
 
+:global(.n-card).config-card {
+  background-color: #f9fafb !important; // 主背景色: 更现代的蓝灰色
+  border: 1px solid #e5e7eb;           // 边框色: 柔和的分割线
+  border-radius: 4px;                   // 增加圆角，更柔和
+  padding: 16px;
+
+  // 为卡片头部标题添加强调色
+  :global(.n-card-header__main),
+  :global(.n-card-header .n-text) { // <--- 添加这一行
+    color: #3b82f6;
+    font-weight: 600;
+  }
+
+  :global(.n-card) {
+    background-color: transparent !important; // 背景透明化，融入主背景
+    border: none;
+    box-shadow: none;
+
+    :global(.n-card__content) {
+      border: 1px solid #e5e7eb;       // 边框色: 与外层统一
+      border-radius: 3px;
+      padding: 12px;
+      background-color: #ffffff;      // 内容区背景: 保持纯白
+    }
+  }
+
+  :global(.n-input),
+  :global(.n-select),
+  :global(.n-input-number) {
+    background-color: transparent !important;
+  }
+}
+
 .field-tip {
-  margin-top: 4px;
+  margin-top: 5px;
   font-size: 12px;
   width: 100%;
 }
