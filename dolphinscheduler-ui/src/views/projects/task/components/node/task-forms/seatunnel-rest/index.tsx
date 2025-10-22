@@ -15,7 +15,15 @@
  * limitations under the License.
  */
 
-import { defineComponent, ref, reactive, computed, watch, onMounted } from 'vue'
+import {
+  defineComponent,
+  ref,
+  reactive,
+  computed,
+  watch,
+  onMounted,
+  inject
+} from 'vue'
 import {
   NTabs,
   NTabPane,
@@ -37,7 +45,6 @@ import {
 } from 'naive-ui'
 import { PlusCircleOutlined } from '@vicons/antd'
 import Monaco from '@/components/monaco-editor'
-import type { INodeData } from '../../types'
 import type {
   SeaTunnelConfigModel,
   SourceConnector,
@@ -51,36 +58,28 @@ import {
   validateConfig,
   convertDorisPort,
   extractJdbcUrl,
-  generateStorageJson,
-  generateSeaTunnelEngineConfig
+  generateStorageJson
 } from './utils'
 import styles from './index.module.scss'
 import {
   queryDataSourceList,
   queryDataSource
 } from '@/service/modules/data-source'
+import { INodeData } from '../../types'
 
 export default defineComponent({
   name: 'SeaTunnelRestForm',
   props: {
-    model: {
-      type: Object as () => INodeData,
-      required: true
-    },
     readonly: {
       type: Boolean,
       default: false
     }
   },
-  emits: ['update:model'],
-  setup(props, { expose, emit }) {
+  setup(props, { expose }) {
     const formRef = ref()
+    const model = inject('model') as INodeData
 
     const configModel = reactive<SeaTunnelConfigModel>({
-      restEndpoint: props.model.restEndpoint || '',
-      connectTimeout: props.model.connectTimeout || 60000,
-      socketTimeout: props.model.socketTimeout || 60000,
-      pollInterval: props.model.pollInterval || 10000,
       env: {
         'job.mode': 'BATCH'
       },
@@ -95,6 +94,7 @@ export default defineComponent({
     const sinkDatasourceOptions = ref<any[]>([]) // Sink 数据源（ORACLE + POSTGRESQL + DORIS）
     const loadingDatasources = ref(false)
     const loadingSinkDatasources = ref(false)
+    const datasourcesLoaded = ref(false) // <--- 添加这一行
 
     const pluginOutputOptions = computed(() => {
       const options: { label: string; value: string }[] = []
@@ -122,24 +122,13 @@ export default defineComponent({
     })
 
     watch(
-      () => [
-        configModel.restEndpoint,
-        configModel.connectTimeout,
-        configModel.socketTimeout,
-        configModel.pollInterval,
-        jsonPreview.value
-      ],
+      configModel,
       () => {
-        const updatedModel = {
-          ...props.model,
-          restEndpoint: configModel.restEndpoint,
-          connectTimeout: configModel.connectTimeout,
-          socketTimeout: configModel.socketTimeout,
-          pollInterval: configModel.pollInterval,
-          // jobConfig 应该使用包含完整运行时信息的配置，但这里为了UI交互暂时用预览JSON
-          jobConfig: generateJsonPreview(configModel)
+        const newJobConfig = generateStorageJson(configModel)
+        // Prevent infinite loops by checking if the value has actually changed
+        if (model && newJobConfig !== model.jobConfig) {
+          model.jobConfig = newJobConfig
         }
-        emit('update:model', updatedModel)
       },
       { deep: true }
     )
@@ -212,9 +201,14 @@ export default defineComponent({
       }
     }
 
-    onMounted(() => {
-      // The setValues method is called by the parent component (detail-modal.tsx)
-      // We don't need to call it here.
+    onMounted(async () => {
+      // Load datasources first
+      await Promise.all([loadSourceDatasources(), loadSinkDatasources()])
+      datasourcesLoaded.value = true
+      // Then parse the initial value from the injected model
+      if (model) {
+        setValues(model.jobConfig || '{}')
+      }
     })
 
     const addSource = () => {
@@ -427,18 +421,10 @@ export default defineComponent({
       target.splice(0, target.length, ...source.map((item) => ({ ...item })))
     }
 
-    const setValues = async (model: INodeData) => {
-      // **新增**: 强制等待数据源 options 列表加载完成
-      await Promise.all([loadSourceDatasources(), loadSinkDatasources()])
-
-      configModel.restEndpoint = model.restEndpoint || ''
-      configModel.connectTimeout = model.connectTimeout || 60000
-      configModel.socketTimeout = model.socketTimeout || 60000
-      configModel.pollInterval = model.pollInterval || 10000
-
-      if (model.jobConfig) {
+    const setValues = (jobConfigStr: string) => {
+      if (jobConfigStr) {
         try {
-          const parsed = JSON.parse(model.jobConfig)
+          const parsed = JSON.parse(jobConfigStr)
           configModel.env = parsed.env || { 'job.mode': 'BATCH' }
           assignArray(configModel.sources, parsed.source || [])
           assignArray(configModel.transforms, parsed.transform || [])
@@ -468,25 +454,23 @@ export default defineComponent({
       }
     }
 
-    const getValues = () => {
-      const storageJson = generateStorageJson(configModel)
-
-      // 实际运行时需要完整的 jobConfig，这里需要一个更完善的策略
-      // 但为了满足导入导出，优先使用 storageJson
-      return {
-        ...props.model,
-        restEndpoint: configModel.restEndpoint,
-        connectTimeout: configModel.connectTimeout,
-        socketTimeout: configModel.socketTimeout,
-        pollInterval: configModel.pollInterval,
-        jobConfig: storageJson,
-
-        // 临时添加一个运行时配置，但这可能不是最佳实践
-        jobConfigForRun: JSON.stringify(
-          generateSeaTunnelEngineConfig(configModel, false)
-        )
+    watch(
+      () => model?.jobConfig,
+      (newVal) => {
+        // This watch handles external updates to the jobConfig string.
+        // It's crucial for initializing the form and for handling undo/redo or programmatic changes.
+        if (!datasourcesLoaded.value) {
+          return
+        }
+        // --- START FIX ---
+        // Only call setValues if the external value is different from the internal state.
+        // This breaks the feedback loop where internal changes trigger a full re-render.
+        if (newVal !== generateStorageJson(configModel)) {
+          setValues(newVal || '{}')
+        }
+        // --- END FIX ---
       }
-    }
+    )
 
     const validate = async () => {
       const result = validateConfig(configModel)
@@ -496,7 +480,7 @@ export default defineComponent({
       return { valid: true, errors: [] }
     }
 
-    expose({ validate, setValues, getValues })
+    expose({ validate })
 
     return () => (
       <NElement tag='div' class={styles['seatunnel-rest-form']}>
@@ -505,20 +489,8 @@ export default defineComponent({
           <NForm ref={formRef} model={configModel} disabled={props.readonly}>
             <NTabs type='line' animated>
               {/* 基础配置 Tab */}
-              <NTabPane name='basic' tab='基础配置'>
+              <NTabPane name='basic' tab='Job Config'>
                 <NSpace vertical size='large'>
-                  {/* REST 端点 */}
-                  <NFormItem
-                    label='SeaTunnel REST 端点'
-                    path='restEndpoint'
-                    required
-                  >
-                    <NInput
-                      v-model:value={configModel.restEndpoint}
-                      placeholder='http://localhost:8080'
-                    />
-                  </NFormItem>
-
                   {/* Env 配置 */}
                   <NCard title='Env 配置' size='small'>
                     <NFormItem label='Job Mode'>
@@ -1060,42 +1032,6 @@ export default defineComponent({
                         )
                     }}
                   </NCard>
-                </NSpace>
-              </NTabPane>
-
-              {/* 高级配置 Tab */}
-              <NTabPane name='advanced' tab='高级配置'>
-                <NSpace vertical size='large'>
-                  <NCollapse>
-                    <NCollapseItem title='连接与轮询配置' name='connection'>
-                      <NSpace vertical>
-                        <NFormItem label='连接超时 (ms)'>
-                          <NInputNumber
-                            v-model:value={configModel.connectTimeout}
-                            min={1000}
-                            max={3600000}
-                            style={{ width: '100%' }}
-                          />
-                        </NFormItem>
-                        <NFormItem label='Socket 超时 (ms)'>
-                          <NInputNumber
-                            v-model:value={configModel.socketTimeout}
-                            min={1000}
-                            max={3600000}
-                            style={{ width: '100%' }}
-                          />
-                        </NFormItem>
-                        <NFormItem label='轮询间隔 (ms)'>
-                          <NInputNumber
-                            v-model:value={configModel.pollInterval}
-                            min={1000}
-                            max={60000}
-                            style={{ width: '100%' }}
-                          />
-                        </NFormItem>
-                      </NSpace>
-                    </NCollapseItem>
-                  </NCollapse>
                 </NSpace>
               </NTabPane>
             </NTabs>

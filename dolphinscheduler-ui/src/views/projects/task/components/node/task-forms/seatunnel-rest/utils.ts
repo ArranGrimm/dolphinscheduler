@@ -314,11 +314,6 @@ export function validateConfig(model: SeaTunnelConfigModel): {
 } {
   const errors: string[] = []
 
-  // 检查 REST 端点
-  if (!model.restEndpoint) {
-    errors.push('SeaTunnel REST 端点不能为空')
-  }
-
   // 检查至少有一个 Source
   if (!model.sources || model.sources.length === 0) {
     errors.push('至少需要配置一个 Source 连接器')

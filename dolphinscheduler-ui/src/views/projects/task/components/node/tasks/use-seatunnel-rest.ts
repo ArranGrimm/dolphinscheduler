@@ -15,9 +15,13 @@
  * limitations under the License.
  */
 
-import { reactive } from 'vue'
+import { reactive, defineAsyncComponent, h } from 'vue'
 import * as Fields from '../fields/index'
 import type { IJsonItem, INodeData, ITaskData } from '../types'
+
+const SeaTunnelRestForm = defineAsyncComponent(
+  () => import('../task-forms/seatunnel-rest')
+)
 
 export function useSeaTunnelRest({
   projectCode,
@@ -56,7 +60,6 @@ export function useSeaTunnelRest({
       Fields.useName(from),
       ...Fields.useTaskDefinition({ projectCode, from, readonly, data, model }),
       Fields.useRunFlag(),
-      Fields.useCache(),
       Fields.useDescription(),
       Fields.useTaskPriority(),
       Fields.useWorkerGroup(projectCode),
@@ -65,6 +68,52 @@ export function useSeaTunnelRest({
       ...Fields.useFailed(),
       Fields.useDelayTime(model),
       ...Fields.useTimeoutAlarm(model),
+      {
+        type: 'input',
+        field: 'restEndpoint',
+        name: 'SeaTunnel REST Endpoint',
+        span: 24,
+        props: {
+          placeholder: 'http://localhost:8080'
+        },
+        validate: {
+          trigger: ['input', 'blur'],
+          required: true
+        }
+      },
+      {
+        type: 'input-number',
+        field: 'connectTimeout',
+        name: 'Connect Timeout (ms)',
+        span: 8,
+        props: {
+          min: 1000
+        }
+      },
+      {
+        type: 'input-number',
+        field: 'socketTimeout',
+        name: 'Socket Timeout (ms)',
+        span: 8,
+        props: {
+          min: 1000
+        }
+      },
+      {
+        type: 'input-number',
+        field: 'pollInterval',
+        name: 'Poll Interval (ms)',
+        span: 8,
+        props: {
+          min: 1000
+        }
+      },
+      {
+        type: 'custom',
+        field: 'jobConfig',
+        span: 24,
+        widget: h(SeaTunnelRestForm)
+      },
       Fields.usePreTasks()
     ] as IJsonItem[],
     model

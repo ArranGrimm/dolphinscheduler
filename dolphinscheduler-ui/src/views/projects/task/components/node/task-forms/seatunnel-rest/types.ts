@@ -128,12 +128,6 @@ export type SinkConnector = (SinkJdbcConnector | SinkDorisConnector) &
 
 // SeaTunnel 完整配置模型
 export interface SeaTunnelConfigModel {
-  // 基础配置
-  restEndpoint: string
-  connectTimeout: number
-  socketTimeout: number
-  pollInterval: number
-
   // Env 配置
   env: EnvConfig
 
