@@ -296,7 +296,7 @@ export default defineComponent({
         batch_size: 1000,
         batch_interval_ms: 1000,
         max_retries: 3,
-        enable_upsert: true,
+        enable_upsert: false,
         data_save_mode: 'APPEND_DATA'
       } as SinkConnector)
     }
