@@ -6,6 +6,7 @@
   flex-direction: row;
   flex-wrap: nowrap;
   gap: 16px;
+  align-items: baseline; 
 }
 
 .form-section {
@@ -36,6 +37,10 @@
 .preview-editor {
   flex: 1;
   min-height: 0;
+  & > :global(div) {
+    /* 使用 !important 来覆盖组件内部的 height: 300px */
+    min-height: 600px;
+  }
 }
 
 .placeholder {

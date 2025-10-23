@@ -576,13 +576,15 @@ export default defineComponent({
                                       disabled={props.readonly}
                                     />
                                   </NFormItem>
-                                  <NButton
-                                    size='small'
-                                    onClick={() => removeSource(index)}
-                                    disabled={props.readonly}
-                                  >
-                                    删除
-                                  </NButton>
+                                  <NSpace justify='end'>
+                                    <NButton
+                                      size='small'
+                                      onClick={() => removeSource(index)}
+                                      disabled={props.readonly}
+                                    >
+                                      删除
+                                    </NButton>
+                                  </NSpace>
                                 </NSpace>
                               </NCard>
                             ))}
@@ -663,13 +665,15 @@ export default defineComponent({
                                       disabled={props.readonly}
                                     />
                                   </NFormItem>
-                                  <NButton
-                                    size='small'
-                                    onClick={() => removeTransform(index)}
-                                    disabled={props.readonly}
-                                  >
-                                    删除
-                                  </NButton>
+                                  <NSpace justify='end'>
+                                    <NButton
+                                      size='small'
+                                      onClick={() => removeTransform(index)}
+                                      disabled={props.readonly}
+                                    >
+                                      删除
+                                    </NButton>
+                                  </NSpace>
                                 </NSpace>
                               </NCard>
                             ))}
@@ -1033,13 +1037,15 @@ export default defineComponent({
                                         </NCollapse>
                                       </>
                                     )}
-                                    <NButton
-                                      size='small'
-                                      onClick={() => removeSink(index)}
-                                      disabled={props.readonly}
-                                    >
-                                      删除
-                                    </NButton>
+                                    <NSpace justify='end'>
+                                      <NButton
+                                        size='small'
+                                        onClick={() => removeSink(index)}
+                                        disabled={props.readonly}
+                                      >
+                                        删除
+                                      </NButton>
+                                    </NSpace>
                                   </NSpace>
                                 </NCard>
                               )
@@ -1057,7 +1063,7 @@ export default defineComponent({
         {/* 右侧：JSON 预览区域 (42%) */}
         <NElement tag='div' class={styles['preview-section']}>
           <NText strong class={styles['preview-title']}>
-            JSON 预览（实时生成）
+            JSON 预览
           </NText>
           <NElement tag='div' class={styles['preview-editor']}>
             <Monaco
