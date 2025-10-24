@@ -136,12 +136,9 @@ export function generateSeaTunnelEngineConfig(
 
       // 高级选项（可选）
       if (s.partition_column) source.partition_column = s.partition_column
-      if (s.partition_num) source.partition_num = s.partition_num
+      if (s.parallelism) source.partition_num = s.parallelism
       if (s['split.size']) source['split.size'] = s['split.size']
       if (s.fetch_size) source.fetch_size = s.fetch_size
-      if (s.connection_check_timeout_sec)
-        source.connection_check_timeout_sec = s.connection_check_timeout_sec
-
       return source
     })
   }
@@ -245,7 +242,11 @@ export function generateStorageConfig(model: SeaTunnelConfigModel): any {
     'doris.batch.size',
     'sink.buffer-size',
     'sink.buffer-count',
-    'doris.config'
+    'doris.config',
+    'parallelism',
+    'partition_column',
+    'split.size',
+    'fetch_size'
   ]
 
   const simplifyConnector = (connector: SourceConnector | SinkConnector) => {

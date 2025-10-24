@@ -43,13 +43,10 @@ export interface SourceConnector {
   user?: string
   password?: string
   // 高级选项（可选）
+  parallelism?: number
   partition_column?: string
-  partition_num?: number
-  partition_lower_bound?: number
-  partition_upper_bound?: number
   'split.size'?: number
   fetch_size?: number
-  connection_check_timeout_sec?: number
 }
 
 // Transform SQL 配置

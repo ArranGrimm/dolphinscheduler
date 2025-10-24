@@ -219,7 +219,8 @@ export default defineComponent({
         datasourceId: null,
         datasourceType: 'POSTGRESQL',
         query: '',
-        plugin_output: `source_${configModel.sources.length + 1}`
+        plugin_output: `source_${configModel.sources.length + 1}`,
+        fetch_size: 5000
       })
     }
 
@@ -432,7 +433,11 @@ export default defineComponent({
             parallelism: 1,
             'job.name': '${system.task.definition.name}'
           }
-          assignArray(configModel.sources, parsed.source || [])
+          const sourcesWithDefaults = (parsed.source || []).map((s: any) => ({
+            ...s,
+            fetch_size: s.fetch_size ?? 5000
+          }))
+          assignArray(configModel.sources, sourcesWithDefaults)
           assignArray(configModel.transforms, parsed.transform || [])
           assignArray(configModel.sinks, parsed.sink || [])
 
@@ -619,6 +624,47 @@ export default defineComponent({
                                     </NButton>
                                   </NSpace>
                                 </NSpace>
+                                <NCollapse>
+                                  <NCollapseItem
+                                    title='高级选项'
+                                    name={`source-advanced-${index}`}
+                                  >
+                                    <NSpace vertical>
+                                      <NFormItem label='并行度'>
+                                        <NInputNumber
+                                          v-model:value={source.parallelism}
+                                          min={1}
+                                          placeholder='如不填写默认使用Env中的并行度'
+                                          style={{ width: '100%' }}
+                                        />
+                                      </NFormItem>
+                                      <NFormItem label='分区列'>
+                                        <NInput
+                                          v-model:value={
+                                            source.partition_column
+                                          }
+                                          placeholder='仅支持一列, 必须属于支持的拆分数据类型(最好是数字类型)'
+                                        />
+                                      </NFormItem>
+                                      <NFormItem label='分片大小'>
+                                        <NInputNumber
+                                          v-model:value={source['split.size']}
+                                          min={1}
+                                          placeholder='8096'
+                                          style={{ width: '100%' }}
+                                        />
+                                      </NFormItem>
+                                      <NFormItem label='拉取大小'>
+                                        <NInputNumber
+                                          v-model:value={source.fetch_size}
+                                          min={1}
+                                          placeholder='5000'
+                                          style={{ width: '100%' }}
+                                        />
+                                      </NFormItem>
+                                    </NSpace>
+                                  </NCollapseItem>
+                                </NCollapse>
                               </NCard>
                             ))}
                           </NSpace>
