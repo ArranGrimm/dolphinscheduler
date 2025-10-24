@@ -614,15 +614,6 @@ export default defineComponent({
                                       disabled={props.readonly}
                                     />
                                   </NFormItem>
-                                  <NSpace justify='end'>
-                                    <NButton
-                                      size='small'
-                                      onClick={() => removeSource(index)}
-                                      disabled={props.readonly}
-                                    >
-                                      删除
-                                    </NButton>
-                                  </NSpace>
                                 </NSpace>
                                 <NCollapse>
                                   <NCollapseItem
@@ -665,6 +656,15 @@ export default defineComponent({
                                     </NSpace>
                                   </NCollapseItem>
                                 </NCollapse>
+                                <NSpace justify='end'>
+                                  <NButton
+                                    size='small'
+                                    onClick={() => removeSource(index)}
+                                    disabled={props.readonly}
+                                  >
+                                    删除
+                                  </NButton>
+                                </NSpace>
                               </NCard>
                             ))}
                           </NSpace>
