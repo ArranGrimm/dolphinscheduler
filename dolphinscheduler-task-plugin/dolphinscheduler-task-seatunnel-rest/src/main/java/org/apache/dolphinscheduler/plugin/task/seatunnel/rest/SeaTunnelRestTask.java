@@ -23,7 +23,9 @@ import org.apache.dolphinscheduler.plugin.task.api.TaskCallBack;
 import org.apache.dolphinscheduler.plugin.task.api.TaskConstants;
 import org.apache.dolphinscheduler.plugin.task.api.TaskException;
 import org.apache.dolphinscheduler.plugin.task.api.TaskExecutionContext;
+import org.apache.dolphinscheduler.plugin.task.api.model.Property;
 import org.apache.dolphinscheduler.plugin.task.api.parameters.AbstractParameters;
+import org.apache.dolphinscheduler.plugin.task.api.utils.ParameterUtils;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpStatus;
@@ -70,15 +72,30 @@ public class SeaTunnelRestTask extends AbstractRemoteTask {
         if (this.seaTunnelRestParameters == null || !this.seaTunnelRestParameters.checkParameters()) {
             throw new SeaTunnelRestTaskException("SeaTunnel REST task params is not valid");
         }
-        this.seaTunnelRestTaskExecutionContext =
-                seaTunnelRestParameters.generateExtendedContext(taskExecutionContext.getResourceParametersHelper());
         this.httpClient = createHttpClient();
-        log.info("Initialize SeaTunnel REST task params: {}", JSONUtils.toPrettyJsonString(seaTunnelRestParameters));
     }
 
     @Override
     public void handle(TaskCallBack taskCallBack) throws TaskException {
         try {
+            // Get the variable map from the task execution context
+            Map<String, Property> paramsMap = taskExecutionContext.getPrepareParamsMap();
+
+            // Replace placeholders in restEndpoint and jobConfig
+            String endpoint = ParameterUtils.convertParameterPlaceholders(seaTunnelRestParameters.getRestEndpoint(),
+                    ParameterUtils.convert(paramsMap));
+            String jobConfig = ParameterUtils.convertParameterPlaceholders(seaTunnelRestParameters.getJobConfig(),
+                    ParameterUtils.convert(paramsMap));
+
+            // Update the parameters object with the resolved values
+            seaTunnelRestParameters.setRestEndpoint(endpoint);
+            seaTunnelRestParameters.setJobConfig(jobConfig);
+
+            this.seaTunnelRestTaskExecutionContext =
+                    seaTunnelRestParameters.generateExtendedContext(taskExecutionContext.getResourceParametersHelper());
+            log.info("Initialize SeaTunnel REST task params: {}",
+                    JSONUtils.toPrettyJsonString(seaTunnelRestParameters));
+
             // Submit job to SeaTunnel server
             this.seaTunnelJobId = submitJob();
 

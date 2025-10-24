@@ -48,7 +48,7 @@ export function useSeaTunnelRest({
     delayTime: 0,
     timeout: 30,
     timeoutNotifyStrategy: ['WARN'],
-    restEndpoint: '',
+    restEndpoint: '${SEATUNNEL_REST_ENDPOINT}',
     jobConfig: '',
     connectTimeout: 60000,
     socketTimeout: 60000,
@@ -82,7 +82,7 @@ export function useSeaTunnelRest({
         name: 'SeaTunnel REST Endpoint',
         span: 12,
         props: {
-          placeholder: 'http://localhost:8080'
+          placeholder: '${SEATUNNEL_REST_ENDPOINT}'
         },
         validate: {
           trigger: ['input', 'blur'],
@@ -127,6 +127,11 @@ export function useSeaTunnelRest({
         span: 24,
         widget: h(SeaTunnelRestForm)
       },
+      ...Fields.useCustomParams({
+        model,
+        field: 'localParams',
+        isSimple: true
+      }),
       {
         ...Fields.usePreTasks(), // <- 使用扩展运算符(...)来继承它的所有原有属性
         span: 12
