@@ -82,7 +82,7 @@ export default defineComponent({
     const configModel = reactive<SeaTunnelConfigModel>({
       env: {
         'job.mode': 'BATCH',
-        parallelism: 1,
+        parallelism: 4,
         'job.name': '${system.task.definition.name}'
       },
       sources: [],
@@ -430,7 +430,7 @@ export default defineComponent({
           const parsed = JSON.parse(jobConfigStr)
           configModel.env = parsed.env || {
             'job.mode': 'BATCH',
-            parallelism: 1,
+            parallelism: 4,
             'job.name': '${system.task.definition.name}'
           }
           const sourcesWithDefaults = (parsed.source || []).map((s: any) => ({
@@ -500,7 +500,7 @@ export default defineComponent({
           <NForm ref={formRef} model={configModel} disabled={props.readonly}>
             <NTabs type='line' animated>
               {/* 基础配置 Tab */}
-              <NTabPane name='basic' tab='Job Config'>
+              <NTabPane name='basic' tab='迁移任务配置'>
                 <NSpace vertical size='large'>
                   {/* Env 配置 */}
                   <NCard
@@ -508,7 +508,7 @@ export default defineComponent({
                     size='small'
                     class={styles['config-card']}
                   >
-                    <NFormItem label='Job Mode' path='job.mode'>
+                    <NFormItem label='任务模式' path='job.mode'>
                       <NSelect
                         options={[
                           { label: 'BATCH', value: 'BATCH' },
@@ -519,7 +519,7 @@ export default defineComponent({
                       />
                     </NFormItem>
                     <NFormItem
-                      label='Parallelism'
+                      label='全局并行度'
                       path='parallelism'
                       // label-placement='left'
                     >
@@ -531,7 +531,7 @@ export default defineComponent({
                       />
                     </NFormItem>
                     <NFormItem
-                      label='Job Name'
+                      label='迁移任务名称'
                       path='job.name'
                       // label-placement='left'
                     >
