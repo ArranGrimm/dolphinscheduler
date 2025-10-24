@@ -100,24 +100,50 @@ export default defineComponent({
 
     const pluginOutputOptions = computed(() => {
       const options: { label: string; value: string }[] = []
-      configModel.sources.forEach((source, index) => {
+      configModel.sources.forEach((source) => {
         if (source.plugin_output) {
           options.push({
-            label: `Source ${index + 1} · ${source.plugin_output}`,
+            label: `${source.plugin_output}`,
             value: source.plugin_output
           })
         }
       })
-      configModel.transforms.forEach((transform, index) => {
+      configModel.transforms.forEach((transform) => {
         if (transform.plugin_output) {
           options.push({
-            label: `Transform ${index + 1} · ${transform.plugin_output}`,
+            label: `${transform.plugin_output}`,
             value: transform.plugin_output
           })
         }
       })
       return options
     })
+
+    const getTransformInputOptions = (currentTransformIndex: number) => {
+      const options: { label: string; value: string }[] = []
+
+      // 1. 添加所有 Source 的输出
+      configModel.sources.forEach((source) => {
+        if (source.plugin_output) {
+          options.push({
+            label: source.plugin_output,
+            value: source.plugin_output
+          })
+        }
+      })
+
+      // 2. 只添加在当前 Transform 以外的其他 Transform 的输出
+      configModel.transforms.forEach((transform, index) => {
+        if (index !== currentTransformIndex && transform.plugin_output) {
+          options.push({
+            label: transform.plugin_output,
+            value: transform.plugin_output
+          })
+        }
+      })
+
+      return options
+    }
 
     const jsonPreview = computed(() => {
       return generateJsonPreview(configModel)
@@ -512,7 +538,7 @@ export default defineComponent({
                       <NSelect
                         options={[
                           { label: 'BATCH', value: 'BATCH' },
-                          { label: 'STREAM', value: 'STREAM' }
+                          { label: 'STREAM', value: 'STREAMING' }
                         ]}
                         v-model:value={configModel.env['job.mode']}
                         style='width: 25%'
@@ -720,7 +746,7 @@ export default defineComponent({
                                   <NFormItem label='输入 Plugin' required>
                                     <NSelect
                                       v-model:value={transform.plugin_input}
-                                      options={pluginOutputOptions.value}
+                                      options={getTransformInputOptions(index)}
                                       placeholder='选择输入 Plugin'
                                       disabled={
                                         props.readonly ||
