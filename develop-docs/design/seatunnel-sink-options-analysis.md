@@ -140,7 +140,7 @@
 - [x] 新增 Oracle/PG 高级选项分组组件，实现 `enable_upsert` 和 `data_save_mode` 选项。
 - [x] 新增 Doris 高级选项分组组件，支持导入格式、2PC 相关输入。
 - [x] 根据本梳理更新 `project-plan.md` 中 Frontend Phase 的细化任务。
-- [ ] 与后端确认新增参数的传输格式，尤其是 `doris.config`（Key-Value）等字段是否需要额外处理。
+- [x] 与后端确认新增参数的传输格式，尤其是 `doris.config`（Key-Value）等字段是否需要额外处理。（注：经端到端测试，当前实现可兼容，无需额外处理）
 
 ---
 

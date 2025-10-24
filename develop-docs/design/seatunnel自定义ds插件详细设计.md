@@ -48,6 +48,15 @@
     5.  **日志汇报**: 从 SeaTunnel REST 接口获取任务执行日志，并输出到 DS 的任务日志中。
     6.  **结果上报**: 根据 SeaTunnel 任务的最终状态，向 DS Master 汇报成功或失败。
 
+#### **3.2.1 参数化与变量替换**
+
+本插件深度集成了 DolphinScheduler 的参数化体系，以实现配置的灵活管理和环境的无缝切换。
+
+  * **参数类型**: 同时支持“自定义参数” (在任务节点中定义) 和“项目级别参数” (在项目设置中定义)。
+  * **工作原理**: 在 `handle()` 方法中，插件会从 `TaskExecutionContext` 获取 `prepareParamsMap`，该 Map 融合了所有可用的参数。通过调用 `ParameterUtils.convertParameterPlaceholders`，插件会对 `restEndpoint` 和 `jobConfig` 两个核心字段中的 `${...}` 占位符进行变量替换。
+  * **最佳实践**: 对于需要在多个工作流之间共享、且随环境（开发、生产）变化的配置（如 `SEATUNNEL_REST_ENDPOINT`），强烈建议使用“项目级别参数”进行统一定义，从而实现“一键切换环境”的效果。
+  * **环境管理澄清**: DS 的“环境管理”功能主要服务于 Shell 等脚本类任务，通过生成环境脚本实现变量注入。对于本插件这类 Java 任务，该功能无效，应使用“项目级别参数”替代。
+
 #### **3.2 前端组件 (Vue UI Component)**
 
   * **位置**: DolphinScheduler UI 项目的源码中。
@@ -108,10 +117,11 @@ public class SeaTunnelRestParameters extends AbstractParameters {
     * 1. 反序列化 JSON 参数为 `SeaTunnelRestParameters` 对象。
     * 2. 调用 `parameters.generateExtendedContext()` 方法，传入 Master 准备好的 `ResourceParametersHelper`，生成包含完整运行时配置的 `SeaTunnelRestTaskExecutionContext`。
   * **`handle()` 方法**: 实现核心的“**提交并轮询**”逻辑。
-    1.  **获取配置**: 从 `init()` 阶段生成的 `ExecutionContext` 中直接获取已准备好的、完整的 SeaTunnel 配置 Map。
-    2.  **提交任务**: 使用 `HttpClient` 调用 SeaTunnel 的 `/submit-job` REST API。获取返回的 `seatunnelJobId`。
-    3.  **设置 AppId**: 调用 `setAppIds(seatunnelJobId)`，这样在 DS 的 UI 上就能看到这个外部任务的 ID。
-    4.  **进入轮询循环**:
+    1.  **参数替换**: 调用 `ParameterUtils.convertParameterPlaceholders`，使用“项目级别参数”和“自定义参数”替换 `restEndpoint` 和 `jobConfig` 中的 `${...}` 占位符。
+    2.  **获取最终配置**: 使用经过变量替换后的 `jobConfig`，重新生成包含完整数据源信息的 `SeaTunnelRestTaskExecutionContext`。
+    3.  **提交任务**: 使用 `HttpClient` 调用 SeaTunnel 的 `/submit-job` REST API。获取返回的 `seatunnelJobId`。
+    4.  **设置 AppId**: 调用 `setAppIds(seatunnelJobId)`，这样在 DS 的 UI 上就能看到这个外部任务的 ID。
+    5.  **进入轮询循环**:
         ```java
         while (true) {
             // 调用 SeaTunnel REST 状态查询 API
@@ -126,7 +136,7 @@ public class SeaTunnelRestParameters extends AbstractParameters {
             // 延时，比如 Thread.sleep(10000);
         }
         ```
-    5.  **日志处理**: 在轮询过程中或任务结束后，调用 SeaTunnel REST 的日志 API，将关键日志通过 `logger.info()` 输出。
+    6.  **日志处理**: 在轮询过程中或任务结束后，调用 SeaTunnel REST 的日志 API，将关键日志通过 `logger.info()` 输出。
 
 #### **5.3 数据源处理机制 (核心设计)**
 
@@ -180,16 +190,20 @@ public class SeaTunnelRestParameters extends AbstractParameters {
 - ✅ 阶段三：前端高级功能开发（2025-10-16）
 
 **当前任务**:
-- ⏳ 后端数据源逻辑重构（进行中）
-- ⏳ Doris Sink 高级选项增强
-- ⏳ 端到端测试
+- ✅ 后端数据源逻辑重构
+- ✅ Doris Sink 高级选项增强
+- ✅ 参数化增强（项目级别参数 + 自定义参数）
+- ✅ 任务停止功能测试
+- 🚧 边界条件测试（由测试团队接手）
+- 🚧 文档更新与同步（进行中）
 
 ---
 
-**文档版本**: v1.4
+**文档版本**: v1.5
 **创建时间**: 2025-10-10
-**最后更新**: 2025-10-20
+**最后更新**: 2025-10-24
 **变更记录**:
+- v1.5 (2025-10-24): 补充了关于参数化与变量替换的核心设计，明确了“项目级别参数”为官方推荐方案。更新了 `handle()` 方法的设计描述和项目当前状态。
 - v1.4 (2025-10-21): 在后端设计中补充了关于 TaskChannel 作为资源声明入口的关键作用，阐明了数据源问题的根本原因及解决方案。
 - v1.3 (2025-10-20): 同步项目最新状态，保持版本一致性。
 - v1.2 (2025-10-18): 新增并详细阐述了基于“Master准备，Worker使用”模式的后端数据源处理机制。更新了数据交互流程和任务主类的设计描述。

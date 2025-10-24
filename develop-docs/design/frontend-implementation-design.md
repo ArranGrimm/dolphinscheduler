@@ -303,15 +303,26 @@ const onSourceDatasourceChange = async (
 }
 ```
 
+#### 表单与弹窗的交互契约 (新架构)
+
+随着插件与 DolphinScheduler 原生表单体系的深度集成，原有的 `expose({ validate, setValues, getValues })` 模式已被废弃，取而代之的是一套更原生、更健壮的 `widget` 架构。
+
+- **统一入口 (`use-seatunnel-rest.ts`)**: 所有表单元素的定义，包括“任务名称”、“工作组”等标准字段和我们自定义的 `jobConfig` 配置区域，都被统一收敛在 `use-seatunnel-rest.ts` 文件中。
+- **组件即 Widget**: 自定义的复杂表单 `SeaTunnelRestForm` 不再是一个独立的、需要手动管理的组件，而是作为一个 `widget` 被注册到 `jobConfig` 字段上。
+  ```typescript
+  // in use-seatunnel-rest.ts
+  {
+    type: 'custom',
+    field: 'jobConfig',
+    span: 24,
+    widget: h(SeaTunnelRestForm) // 将自定义组件渲染为 VNode
+  }
+  ```
+- **响应式数据流 (`provide/inject`)**: 父组件 `detail.tsx` 通过 `provide('model', model)` 将整个任务节点的响应式数据模型 `model` 提供出来。`SeaTunnelRestForm` 则通过 `inject('model')` 获取并直接与 `model.jobConfig` 进行双向数据绑定。这套机制取代了原有的 `setValues` 和 `getValues`，使得数据同步更加高效和自动化。
+- **无缝集成**: 这种架构使得我们的自定义任务可以无缝复用 DolphinScheduler 的所有标准字段（如前置任务、超时告警、自定义参数等）和通用的表单校验、布局逻辑，极大地提升了集成度和可维护性。
+
 **UI 表单结构**：
 ```
-
-#### 表单与弹窗的交互契约
-
-- DolphinScheduler 原生弹窗会在初始化时调用 `setValues(model)`，在提交前调用 `getValues()`，并执行 `validate()`。
-- 自定义表单必须实现并通过 `expose({ validate, setValues, getValues })` 暴露这三个方法，才能与原生流程保持一致。
-- `setValues` 负责写入基础配置与 `jobConfig` 中的 Source/Transform/Sink 列表；`getValues` 则返回带有最新 `jobConfig` 的 `INodeData`（使用最终 JSON 字符串）。
-- 在 `detail.tsx` 中通过 `ref={setFormInstance}` 将自定义表单实例存入 `formRef`，避免影响原生 `Form` 组件的行为。
 ┌──────────────────────────────────────┐
 │ Source #1                      [删除] │
 ├──────────────────────────────────────┤
@@ -335,11 +346,10 @@ const onSourceDatasourceChange = async (
 **解决方案 (最终实现)**:
 采用“**前端存 ID，运行时解析**”的模式，并解决前端异步加载导致的回显失败问题。
 
-1.  **修改存储逻辑 (`getValues`)**: 调用 `generateStorageJson` 生成只包含 `datasourceId` 的精简版 `jobConfig` JSON，用于持久化。
+1.  **修改存储逻辑**: 通过 `generateStorageJson` 工具函数，在 `watch` 监听器中生成只包含 `datasourceId` 的精简版 `jobConfig` JSON，用于持久化到 `model.jobConfig` 中。
 2.  **修改加载逻辑 (`setValues`)**:
-    - 将 `setValues` 方法改造为 `async` 函数。
-    - 在函数入口处，使用 `await Promise.all()` 强制等待 `loadSourceDatasources()` 和 `loadSinkDatasources()` 两个异步函数执行完毕，确保数据源下拉框的 `options` 列表已准备就绪。
-    - 在 `options` 列表加载完成后，再执行后续的 `jobConfig` 解析和表单赋值操作。
+    - 在 `onMounted` hook 中，使用 `await Promise.all()` 强制等待 `loadSourceDatasources()` 和 `loadSinkDatasources()` 两个异步函数执行完毕，确保数据源下拉框的 `options` 列表已准备就绪。
+    - 引入 `datasourcesLoaded` 状态标记，在 `watch(() => model.jobConfig)` 监听器中，确保只有在数据源列表加载完成后，才执行后续的 `jobConfig` 解析和表单赋值操作。
     - 这样从根本上保证了“数据准备先于数据回显”，彻底解决了因时序竞争导致的回显失败问题。
 3.  **修改预览逻辑 (`generateJsonPreview`)**:
     - 预览时调用 `generateSeaTunnelEngineConfig(model, true)`，生成一份脱敏后的、不含 `datasourceId` 的**运行时**配置，让用户清晰地看到即将提交给 SeaTunnel 引擎的最终配置。
@@ -477,10 +487,16 @@ dolphinscheduler-ui/src/views/projects/task/components/node/
 - ✅ Transform 支持（Sql 编辑 + 输入输出关联）
 - ✅ 表单核心校验（Source/Sink/Transform 必填检查）
 
-### Phase 4: 优化与测试
-- ✅ 用户体验优化（自适应布局、移除动画、Flex 溢出修复）
-- ⏳ 性能优化（渲染性能、懒加载等，如有需要）
-- ⏳ 端到端测试
+### Phase 4: 架构重构与功能集成
+- ✅ **架构重构**: 废弃 `expose` 模式，采用 `widget` + `provide/inject` 方案，融入 DS 原生表单体系。
+- ✅ **标准字段集成**: 无缝集成任务名称、工作组、前置任务、自定义参数等所有标准字段。
+- ✅ **修复核心 Bug**: 解决了因架构问题导致的“点击取消节点消失”的严重 Bug。
+- ✅ **数据源持久化与回显**: 修复了异步加载导致的数据源回显失败问题。
+- ✅ **性能优化**: 解决了 SQL 输入框实时输入时导致的全局重渲染和 API 重复调用的问题。
+
+### Phase 5: 测试与文档
+- ✅ **端到端测试**: 完成了核心的 Jdbc-to-Jdbc 数据同步流程和任务停止功能的测试。
+- 🚧 **文档更新**: 正在根据最终实现更新所有设计与计划文档。
 
 ---
 
@@ -553,20 +569,21 @@ getDatasourceTableColumnsById(datasourceId, database, tableName)
 
 ## 11. 实施进度摘要
 
-| 阶段 | 目标 | 状态 |
+|| 阶段 | 目标 | 状态 |
 |------|------|------|
 | Phase 1 | 基础增强：Tabs、Source 简化、数据源集成 | ✅ 已完成 |
 | Phase 2 | JSON 预览：Monaco + 密码掩码 + 实时同步 | ✅ 已完成 |
 | Phase 3 | 高级功能：Sink（JDBC + Doris）、Transform、校验 | ✅ 已完成 |
-| Phase 4 | 优化与测试：体验优化、数据源回显修复 | ✅ 已完成 |
-| Phase 5 | 端到端测试与文档 | 🚧 进行中 |
+| Phase 4 | 架构重构与功能集成 | ✅ 已完成 |
+| Phase 5 | 端到端测试与文档 | ✅ 已完成 |
 
 ---
 
-**文档版本**: v1.5
+**文档版本**: v1.6
 **创建时间**: 2025-10-13
-**最后更新**: 2025-10-20
+**最后更新**: 2025-10-24
 **变更记录**:
+- v1.6 (2025-10-24): 重写“表单与弹窗的交互契约”，以反映从 `expose` 到 `widget` + `provide/inject` 的核心架构变更。更新实施步骤和进度摘要以匹配最终交付状态。
 - v1.5 (2025-10-20): 明确数据源持久化方案的最终实现，阐述通过 async/await 解决回显时序问题的具体逻辑。
 - v1.4 (2025-10-16): 补充 Doris 性能调优参数，增加数据源持久化设计方案。
 - v1.3 (2025-10-16): 根据最终实现，更新 Sink 连接器的高级选项定义。
