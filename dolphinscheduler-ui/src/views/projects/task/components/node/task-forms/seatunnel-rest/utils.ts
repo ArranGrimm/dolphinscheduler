@@ -109,7 +109,7 @@ export function generateSeaTunnelEngineConfig(
 
   // Env 配置
   if (model.env && Object.keys(model.env).length > 0) {
-    config.env = { ...model.env }
+    config.env = buildEnvConfig(model.env)
   }
 
   // Source 配置（简化版 - 只支持 SQL 查询）
@@ -221,7 +221,7 @@ export function generateStorageConfig(model: SeaTunnelConfigModel): any {
   const config: any = {}
 
   if (model.env && Object.keys(model.env).length > 0) {
-    config.env = { ...model.env }
+    config.env = buildEnvConfig(model.env)
   }
 
   // 只保留核心和用户手动输入的字段
@@ -378,4 +378,15 @@ export function validateConfig(model: SeaTunnelConfigModel): {
     valid: errors.length === 0,
     errors
   }
+}
+
+const buildEnvConfig = (env: any) => {
+  const envConfig: any = { 'job.mode': env['job.mode'] || 'BATCH' }
+  if (env.parallelism && env.parallelism > 0) {
+    envConfig.parallelism = env.parallelism
+  }
+  if (env['job.name'] && env['job.name'].trim() !== '') {
+    envConfig['job.name'] = env['job.name']
+  }
+  return envConfig
 }

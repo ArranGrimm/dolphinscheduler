@@ -81,7 +81,9 @@ export default defineComponent({
 
     const configModel = reactive<SeaTunnelConfigModel>({
       env: {
-        'job.mode': 'BATCH'
+        'job.mode': 'BATCH',
+        parallelism: 1,
+        'job.name': '${system.task.definition.name}'
       },
       sources: [],
       transforms: [],
@@ -425,7 +427,11 @@ export default defineComponent({
       if (jobConfigStr) {
         try {
           const parsed = JSON.parse(jobConfigStr)
-          configModel.env = parsed.env || { 'job.mode': 'BATCH' }
+          configModel.env = parsed.env || {
+            'job.mode': 'BATCH',
+            parallelism: 1,
+            'job.name': '${system.task.definition.name}'
+          }
           assignArray(configModel.sources, parsed.source || [])
           assignArray(configModel.transforms, parsed.transform || [])
           assignArray(configModel.sinks, parsed.sink || [])
@@ -497,10 +503,37 @@ export default defineComponent({
                     size='small'
                     class={styles['config-card']}
                   >
-                    <NFormItem label='Job Mode'>
-                      <NInput
+                    <NFormItem label='Job Mode' path='job.mode'>
+                      <NSelect
+                        options={[
+                          { label: 'BATCH', value: 'BATCH' },
+                          { label: 'STREAM', value: 'STREAM' }
+                        ]}
                         v-model:value={configModel.env['job.mode']}
-                        placeholder='BATCH'
+                        style='width: 25%'
+                      />
+                    </NFormItem>
+                    <NFormItem
+                      label='Parallelism'
+                      path='parallelism'
+                      // label-placement='left'
+                    >
+                      <NInputNumber
+                        v-model:value={configModel.env.parallelism}
+                        min={1}
+                        placeholder='1'
+                        style='width: 25%'
+                      />
+                    </NFormItem>
+                    <NFormItem
+                      label='Job Name'
+                      path='job.name'
+                      // label-placement='left'
+                    >
+                      <NInput
+                        v-model:value={configModel.env['job.name']}
+                        placeholder='${system.task.definition.name}'
+                        style='width: 50%'
                       />
                     </NFormItem>
                   </NCard>

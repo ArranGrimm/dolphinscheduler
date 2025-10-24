@@ -24,9 +24,9 @@ export type DatasourceType = 'POSTGRESQL' | 'ORACLE' | 'DORIS'
 
 // Env 配置
 export interface EnvConfig {
-  'job.mode'?: 'BATCH' | 'STREAMING'
+  'job.mode': 'BATCH' | 'STREAMING'
+  parallelism?: number
   'job.name'?: string
-  'execution.parallelism'?: number
   [key: string]: any
 }
 
