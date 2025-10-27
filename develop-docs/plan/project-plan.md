@@ -136,6 +136,12 @@
 #### 6. ⏳ 深度校验（持续中）
 - URL/SQL 合法性、Plugin Output 重名校验、引用闭环检查
 
+#### 7. ✅ Source 高级选项（已完成 2025-10-27）
+- 新增 `parallelism`、`partition_column`、`split.size`、`fetch_size` 四个高级选项
+- 与 Sink 高级选项保持一致的折叠面板样式
+- 默认值设置：`fetch_size` 为 5000
+- 占位符提示优化
+
 ---
 
 ### 🔧 Phase 2: 重构与增强（已完成）
@@ -281,7 +287,7 @@ if (StringUtils.isEmpty(jobStatus)) {
 
 ---
 
-### 🔧 Phase 4: 测试与验证（进行中）
+### 🔧 Phase 4: 测试与验证（已完成）
 
 #### 1. ✅ 任务 Kill 功能端到端测试 (已完成)
 
@@ -291,7 +297,7 @@ if (StringUtils.isEmpty(jobStatus)) {
 3. 观察任务日志，确认 `cancelApplication()` 被调用，并通过 REST API 成功取消了 SeaTunnel Job。
 4. 检查 SeaTunnel 端任务状态最终变为 `CANCELED`。
 
-#### 2. 🚧 边界条件与异常处理测试 (已暂停)
+#### 2. 🚧 边界条件与异常处理测试 (移交测试团队)
 
 **状态**: 此部分的详细测试已交由内部测试团队，在插件部署到内部环境后执行。
 
@@ -302,7 +308,34 @@ if (StringUtils.isEmpty(jobStatus)) {
 
 ---
 
-### 📚 Phase 5: 文档与交付（进行中）
+### 🎨 Phase 5: UI/UX 优化与配置（已完成 2025-10-27）
+
+#### 1. ✅ 表单布局优化
+- 调整通用输入框（任务名称、工作组、环境名称等）宽度为半宽（`span: 12`）
+- 添加不可见占位符实现强制换行
+
+#### 2. ✅ 视觉层次优化
+- 为 Env、Source、Transform、Sink 配置卡片添加统一的背景色（`#f9fafb`）和边框样式
+- 优化嵌套卡片样式，使内容区域背景为纯白
+- 统一标题文字颜色为蓝色（`#3b82f6`）
+
+#### 3. ✅ 交互细节优化
+- 移动 Source/Transform/Sink 动态卡片的删除按钮至右下角
+- 优化 JSON 预览区域标题垂直对齐
+- 使 Monaco 编辑器高度动态填充可用垂直空间（`min-height: 600px`）
+
+#### 4. ✅ 任务分组与图标配置
+- 修改 `task-type-config.yaml`，将 `SEATUNNEL_REST` 从 `dataIntegration` 移至 `universal` 分组
+- 在 `dag.module.scss` 中添加 `.icon-seatunnel_rest` 和 `:hover` 样式
+- 放置自定义图标文件至 `public/images/task-icons/` 目录
+
+#### 5. ✅ Transform 逻辑优化
+- 实现 `getTransformInputOptions(currentTransformIndex)` 方法
+- 修复 Transform 可以选择自己作为输入的循环引用问题
+
+---
+
+### 📚 Phase 6: 文档与交付（进行中）
 
 #### 1. 🚧 撰写部署与配置文档（面向运维人员）
 
@@ -322,9 +355,9 @@ if (StringUtils.isEmpty(jobStatus)) {
 - 参数字段详细说明
 - 常见配置示例（如"MySQL 到 Doris 数据同步"）
 
-#### 3. ✅ 更新项目状态文档 (进行中)
+#### 3. ✅ 更新项目状态文档 (已完成 2025-10-27)
 
-**状态**: 正在根据最终实现，同步更新所有设计、计划、进度文档。
+**状态**: 已根据最终实现，同步更新所有设计、计划、进度文档。
 
 ---
 
@@ -364,8 +397,12 @@ if (StringUtils.isEmpty(jobStatus)) {
 | 前端架构重构与标准字段集成 | 2025-10-22 | ✅ 完成 |
 | 参数化增强（项目级+自定义） | 2025-10-24 | ✅ 完成 |
 | 任务停止功能测试 | 2025-10-24 | ✅ 完成 |
-| 边界条件测试 | TBD | 🚧 已暂停/移交 |
-| 文档交付 | TBD | 🚧 进行中 |
+| Source 高级选项 | 2025-10-27 | ✅ 完成 |
+| UI/UX 优化与任务分组配置 | 2025-10-27 | ✅ 完成 |
+| Transform 循环引用修复 | 2025-10-27 | ✅ 完成 |
+| 项目文档同步更新 | 2025-10-27 | ✅ 完成 |
+| 边界条件测试 | TBD | 🚧 已移交测试团队 |
+| 用户文档编写 | TBD | 🚧 待启动 |
 
 ---
 
@@ -452,7 +489,7 @@ if (StringUtils.isEmpty(jobStatus)) {
 
 ---
 
-**文档版本**: v1.5
+**文档版本**: v1.6
 **创建时间**: 2025-10-14
-**最后更新**: 2025-10-24
+**最后更新**: 2025-10-27
 

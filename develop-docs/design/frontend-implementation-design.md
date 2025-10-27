@@ -202,18 +202,17 @@ type SinkConfig =
 #### Source 高级选项（可折叠）
 ```typescript
 {
+  // 并行控制
+  parallelism?: number, // 单独控制此 Source 的并发数
+  
   // 并行分片
-  partition_column?: string,
-  partition_num?: number,
-  partition_lower_bound?: number,
-  partition_upper_bound?: number,
+  partition_column?: string, // 仅支持一列，必须属于支持的拆分数据类型（最好是数字类型）
   
   // 拆分策略
-  'split.size'?: number,
+  'split.size'?: number, // 控制并发任务的粒度（行数），默认 8096
   
   // 批量设置
-  fetch_size?: number,
-  connection_check_timeout_sec?: number
+  fetch_size?: number // JDBC 驱动层面的性能调优，默认 5000
 }
 ```
 
@@ -490,13 +489,21 @@ dolphinscheduler-ui/src/views/projects/task/components/node/
 ### Phase 4: 架构重构与功能集成
 - ✅ **架构重构**: 废弃 `expose` 模式，采用 `widget` + `provide/inject` 方案，融入 DS 原生表单体系。
 - ✅ **标准字段集成**: 无缝集成任务名称、工作组、前置任务、自定义参数等所有标准字段。
-- ✅ **修复核心 Bug**: 解决了因架构问题导致的“点击取消节点消失”的严重 Bug。
+- ✅ **修复核心 Bug**: 解决了因架构问题导致的"点击取消节点消失"的严重 Bug。
 - ✅ **数据源持久化与回显**: 修复了异步加载导致的数据源回显失败问题。
 - ✅ **性能优化**: 解决了 SQL 输入框实时输入时导致的全局重渲染和 API 重复调用的问题。
+- ✅ **Source 高级选项**: 新增 `parallelism`, `partition_column`, `split.size`, `fetch_size` 四个高级选项，与 Sink 高级选项保持一致的折叠面板样式。
 
-### Phase 5: 测试与文档
+### Phase 5: UI/UX 优化与左侧栏配置
+- ✅ **表单布局优化**: 调整通用输入框（任务名称、工作组等）宽度为半宽，优化视觉平衡。
+- ✅ **区块背景色**: 为 Env、Source、Transform、Sink 配置卡片添加背景色区分，提升层次感。
+- ✅ **删除按钮位置**: 调整 Source/Transform/Sink 动态卡片的删除按钮至右下角。
+- ✅ **JSON 预览区域**: 优化标题垂直对齐，使 Monaco 编辑器高度动态填充可用空间。
+- ✅ **任务分组与图标**: 修改后端 YAML 配置 (`task-type-config.yaml`)，将 `SEATUNNEL_REST` 从"数据集成"移至"通用组件"分组；添加 CSS 配置 (`dag.module.scss`) 使左侧任务栏正确显示自定义图标。
+
+### Phase 6: 测试与文档
 - ✅ **端到端测试**: 完成了核心的 Jdbc-to-Jdbc 数据同步流程和任务停止功能的测试。
-- 🚧 **文档更新**: 正在根据最终实现更新所有设计与计划文档。
+- ✅ **文档更新**: 根据最终实现更新所有设计与计划文档。
 
 ---
 
@@ -575,15 +582,17 @@ getDatasourceTableColumnsById(datasourceId, database, tableName)
 | Phase 2 | JSON 预览：Monaco + 密码掩码 + 实时同步 | ✅ 已完成 |
 | Phase 3 | 高级功能：Sink（JDBC + Doris）、Transform、校验 | ✅ 已完成 |
 | Phase 4 | 架构重构与功能集成 | ✅ 已完成 |
-| Phase 5 | 端到端测试与文档 | ✅ 已完成 |
+| Phase 5 | UI/UX 优化与左侧栏配置 | ✅ 已完成 |
+| Phase 6 | 端到端测试与文档 | ✅ 已完成 |
 
 ---
 
-**文档版本**: v1.6
+**文档版本**: v1.7
 **创建时间**: 2025-10-13
-**最后更新**: 2025-10-24
+**最后更新**: 2025-10-27
 **变更记录**:
-- v1.6 (2025-10-24): 重写“表单与弹窗的交互契约”，以反映从 `expose` 到 `widget` + `provide/inject` 的核心架构变更。更新实施步骤和进度摘要以匹配最终交付状态。
+- v1.7 (2025-10-27): 新增 Phase 5（UI/UX 优化与左侧栏配置），补充 Source 高级选项的最终参数列表，更新实施进度摘要。
+- v1.6 (2025-10-24): 重写"表单与弹窗的交互契约"，以反映从 `expose` 到 `widget` + `provide/inject` 的核心架构变更。更新实施步骤和进度摘要以匹配最终交付状态。
 - v1.5 (2025-10-20): 明确数据源持久化方案的最终实现，阐述通过 async/await 解决回显时序问题的具体逻辑。
 - v1.4 (2025-10-16): 补充 Doris 性能调优参数，增加数据源持久化设计方案。
 - v1.3 (2025-10-16): 根据最终实现，更新 Sink 连接器的高级选项定义。
