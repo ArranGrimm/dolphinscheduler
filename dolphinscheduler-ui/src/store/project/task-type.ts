@@ -73,6 +73,10 @@ export const TASK_TYPES_MAP = {
   CONDITIONS: {
     alias: 'CONDITIONS'
   },
+  DATAVINES: {
+    alias: 'DATAVINES',
+    helperLinkDisable: true
+  },
   DATA_QUALITY: {
     alias: 'DATA_QUALITY',
     helperLinkDisable: true

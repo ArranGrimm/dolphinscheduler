@@ -54,6 +54,7 @@ export type TaskType =
   | 'LINKIS'
   | 'DATA_FACTORY'
   | 'REMOTESHELL'
+  | 'DATAVINES'
 
 export type TaskExecuteType = 'STREAM' | 'BATCH'
 
@@ -107,6 +108,10 @@ export const TASK_TYPES_MAP = {
   },
   CONDITIONS: {
     alias: 'CONDITIONS'
+  },
+  DATAVINES: {
+    alias: 'DATAVINES',
+    helperLinkDisable: true
   },
   DATA_QUALITY: {
     alias: 'DATA_QUALITY',

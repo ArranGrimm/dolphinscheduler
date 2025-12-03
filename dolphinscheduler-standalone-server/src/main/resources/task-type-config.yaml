@@ -48,6 +48,7 @@ task:
     - 'SQOOP'
   dataQuality:
     - 'DATA_QUALITY'
+    - 'DATAVINES'
   machineLearning:
     - 'JUPYTER'
     - 'MLFLOW'

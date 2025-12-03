@@ -36,6 +36,7 @@ type TaskType =
   | 'PIGEON'
   | 'SQOOP'
   | 'CONDITIONS'
+  | 'DATAVINES'
   | 'DATA_QUALITY'
   | 'SWITCH'
   | 'SEATUNNEL'

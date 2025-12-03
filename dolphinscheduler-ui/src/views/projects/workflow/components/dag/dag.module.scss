@@ -110,6 +110,9 @@ $bgLight: #ffffff;
     &.icon-dynamic {
       background-image: url('/images/task-icons/dynamic.png');
     }
+    &.icon-datavines {
+      background-image: url('/images/task-icons/datavines.png');
+    }
     &.icon-data_quality {
       background-image: url('/images/task-icons/data_quality.png');
     }
@@ -228,6 +231,9 @@ $bgLight: #ffffff;
       }
       &.icon-dynamic {
         background-image: url('/images/task-icons/dynamic_hover.png');
+      }
+      &.icon-datavines {
+        background-image: url('/images/task-icons/datavines_hover.png');
       }
       &.icon-data_quality {
         background-image: url('/images/task-icons/data_quality_hover.png');
